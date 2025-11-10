@@ -15,7 +15,7 @@ https://github.com/user-attachments/assets/7ffb51ff-1936-49c8-a31a-8af38f184bb9
 
 Paste the following Code into "Dashboard -> General -> Custom CSS"
 
-```@import url("https://cdn.jsdelivr.net/gh/v1rusnl/Embymalism@latest/Embymalism_4.9.1.80.css```
+```@import url("https://cdn.jsdelivr.net/gh/v1rusnl/Embymalism@latest/Embymalism_4.9.1.80.css");```
 
 The code in this Readme is always the latest.
 
