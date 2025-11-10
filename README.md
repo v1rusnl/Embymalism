@@ -3,11 +3,11 @@
 
 A Finimalism inspired CSS theme for Emby Media Servers Web Client
 
-<img width="800" alt="image" src="https://github.com/user-attachments/assets/a6a6022d-fe8c-4486-b5d8-a513836ceed8" />
-<img width="800" alt="image" src="https://github.com/user-attachments/assets/aaadac7a-886d-4979-9797-9a4a7034a534" />
-<img width="800" alt="image" src="https://github.com/user-attachments/assets/50887939-9e56-45fd-b13c-2353d4d064ce" />
+<img width="800" height="900" alt="Screenshot 2025-11-10 103506" src="https://github.com/user-attachments/assets/0d7fd79e-dfe1-4ed2-bebd-fb5ec75547c2" />
+<img width="800" height="902" alt="Screenshot 2025-11-10 103343" src="https://github.com/user-attachments/assets/276e022e-104f-4adc-8478-c6ca20e4d006" />
+<img width="800" height="904" alt="Screenshot 2025-11-10 105309" src="https://github.com/user-attachments/assets/ae351d89-f306-4178-8967-533df6fc0b3f" />
 
-https://github.com/user-attachments/assets/353cba7a-cbca-4840-965d-a8ec6293877d
+https://github.com/user-attachments/assets/7ffb51ff-1936-49c8-a31a-8af38f184bb9
 
 
 ## Installation
