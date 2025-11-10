@@ -295,6 +295,11 @@ i.navDrawerListItemIcon.listItemIcon.md-icon {
   color: inherit !important;
 }
 
+@media (min-width: 60em) {
+    .mainDrawer-mini .listItem {
+        width: 114% !important;
+    }
+
 /* ===== FORMULARE & INPUTS ===== */
 form, .readOnlyContent {
   max-width: 100ch;
