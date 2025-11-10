@@ -3,9 +3,10 @@
 
 A Finimalism inspired CSS theme for Emby Media Servers Web Client
 
-<img width="800" height="900" alt="Screenshot 2025-11-10 103506" src="https://github.com/user-attachments/assets/0d7fd79e-dfe1-4ed2-bebd-fb5ec75547c2" />
-<img width="800" height="902" alt="Screenshot 2025-11-10 103343" src="https://github.com/user-attachments/assets/276e022e-104f-4adc-8478-c6ca20e4d006" />
-<img width="800" height="904" alt="Screenshot 2025-11-10 105309" src="https://github.com/user-attachments/assets/ae351d89-f306-4178-8967-533df6fc0b3f" />
+<img width="800" alt="Screenshot 2025-11-10 105309" src="https://github.com/user-attachments/assets/ae351d89-f306-4178-8967-533df6fc0b3f" />
+<img width="800" alt="Screenshot 2025-11-10 103343" src="https://github.com/user-attachments/assets/276e022e-104f-4adc-8478-c6ca20e4d006" />
+<img width="800" alt="Screenshot 2025-11-10 103506" src="https://github.com/user-attachments/assets/0d7fd79e-dfe1-4ed2-bebd-fb5ec75547c2" />
+
 
 https://github.com/user-attachments/assets/7ffb51ff-1936-49c8-a31a-8af38f184bb9
 
