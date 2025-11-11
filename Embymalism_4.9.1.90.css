@@ -1,0 +1,3074 @@
+/* ===== Embymalism_4.9.1.90 ===== */
+
+@import url('https://fonts.googleapis.com/css2?family=Sofia+Sans:ital,wght@0,1..1000;1,1..1000&display=swap');
+
+/* ===== GRUNDLEGENDES STYLING ===== */
+body {
+  font-family: 'Sofia Sans', sans-serif;
+}
+
+html {
+  background: radial-gradient(circle at 0% 100%, rgba(54, 66, 84, 0.55) 0%, rgba(54, 66, 84, 0.043) 70%, rgba(54, 66, 84, 0) 80%), radial-gradient(circle at 100% 100%, rgb(47 52 56 / 55%) 0%, rgba(113, 135, 153, 0.043) 70%, rgba(113, 135, 153, 0) 80%), radial-gradient(circle at 100% 0%, rgba(54, 66, 84, 0.55) 0%, rgba(54, 66, 84, 0.043) 70%, rgba(54, 66, 84, 0) 80%), radial-gradient(circle at 0% 0%, rgb(129 170 208 / 55%) 0%, rgba(91, 114, 135, 0.043) 70%, rgba(91, 114, 135, 0) 80%), rgb(0, 0, 0) !important;
+}
+
+img, div, button {
+  image-rendering: -webkit-optimize-contrast;
+}
+
+/* ===== CSS VARIABLEN ===== */
+:root {
+  --theme-primary-color: #14aadf !important;
+  --theme-primary-color-hue: #14aadf !important;
+  --theme-accent-text-color: #14aadf !important;
+  --theme-primary-color-lightened: #14aadf !important;
+  --theme-icon-focus-background: rgb(20 170 223 / 20%) !important;
+  --theme-accent-text-color-darkbg: #14aadf!important;
+  --theme-accent-text-color-lightbg: #14aadf!important;
+}
+
+:not(.layout-tv):root {
+  --theme-background: !important;
+  --header-blur-background: rgba(20, 20, 20, 0.66) !important;
+  --drawer-background: #2C2C2E !important;
+  --docked-drawer-background: rgba(0, 0, 0, 0.25) !important;
+  --dialog-header-background: #2b323c !important;
+  --button-background: #1f1f1f !important;
+  --card-background: rgba(0, 0, 0, 0.15) !important;
+  --footer-blur-background: rgba(29, 29, 31, 0.66) !important;
+}
+
+/* ===== LOGIN SEITEN ===== */
+div.view-startup-manuallogin,
+div.view-startup-login {
+  background-image: url(https://i.imgur.com/WDXlX2s.jpeg);
+}
+
+/* ===== HEADER + SCROLLBAR ===== */
+.emby-scroller {
+    -ms-overflow-style: none !important;  /* IE und Edge */
+    scrollbar-width: none !important;  /* Firefox */
+}
+
+.skinHeader {
+  height: auto!important;
+  min-height: 45px!important;
+  box-sizing: content-box;
+  padding: 1em !important;
+  margin: 0 auto;
+  view-transition-name: none!important;
+  margin-right: -15px !important; /* Scrollbar-Breite kompensieren */
+  padding-right: 15px !important;
+}
+
+.skinHeader-withBackground.headroom-scrolling {
+  -webkit-backdrop-filter: saturate(1) blur(20px) !important;
+  backdrop-filter: saturate(1) blur(20px) !important;
+  background-color: transparent !important;
+  box-shadow: 0px 5px 25px 5px rgba(0,0,0,0.34) !important;
+  border-bottom: 0.08em solid rgba(255, 255, 255, .08);
+}
+
+.skinHeader .headerLeft {
+  padding-left: 0 !important;
+}
+
+.headerLeft .pageTitleWithDefaultLogo,
+.headerTop h3.pageTitle.pageTitleWithLogo.pageTitleWithDefaultLogo {
+  display: none !important;
+}
+
+.headerLeft.headerPartFixedWidth {
+  z-index: 1;
+}
+
+div.headerLeft.headerSection.headerLeft-withdockeddrawer {
+  padding-left: 130px !important;
+}
+
+h2.pageTitle.headerSectionItem {
+  font-size: 1.66956521739130434em;
+}
+
+.headerMiddle {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.headerMiddle button.emby-tab-button-active {
+  color: #fff;
+}
+
+.headerMiddle.sectionTabs.headerMiddle-withSectionTabs {
+  font-size: 12px;
+}
+
+.headerMiddle.sectionTabs.headerMiddle-withSectionTabs .emby-tab-button-active {
+  background: rgb(255 255 255 / 10%) !important;
+}
+
+.headerLeft button {
+  color: #f6f6f7;
+}
+
+button.headerBackButton.paper-icon-button-light {
+  display: block !important;
+}
+
+
+/* Header Buttons - transparent mit blauem Hover */
+button.headerBackButton.headerButton.headerSectionItem.paper-icon-button-light.headerBackButton-showfullscreen,
+button.headerCastButton.headerButton.headerSectionItem.md-icon.paper-icon-button-light,
+button.headerSearchButton.headerButton.headerSectionItem.md-icon.paper-icon-button-light.hiddenWhenBottomNavVisible,
+button.headerUserButton.headerButton.headerSectionItem.paper-icon-button-light,
+button.headerSettingsButton.headerButton.headerSectionItem.md-icon.paper-icon-button-light,
+button.md-icon.secondaryText.btnVoiceInput.flex-shrink-zero.paper-icon-button-light,
+button.btnServerMoreMenu.paper-icon-button-light,
+button.btnRestartMenu.paper-icon-button-light,
+button.listItemButton.itemAction.md-icon.paper-icon-button-light,
+button.btnSelectCachePath.emby-input-iconbutton.paper-icon-button-light,
+button.btnSelectCertPath.emby-input-iconbutton.paper-icon-button-light,
+button.dataGridItemCell-button.btnConfigureGridColumns.itemAction.md-icon.secondaryText.paper-icon-button-light,
+button.btnSelectCustomIntrosPath.emby-input-iconbutton.paper-icon-button-light,
+button.btnSelectCodecIntrosPath.emby-input-iconbutton.paper-icon-button-light,
+button.btnSelectUploadPath.emby-input-iconbutton.paper-icon-button-light,
+.listItemImageContainer.listItemImageContainer-smallest.itemAction.listItemImageContainer-square.defaultCardBackground,
+button.btnSelectBackupLocation.emby-input-iconbutton.paper-icon-button-light,
+button.emby-input-iconbutton.paper-icon-button-light,
+button.listItemButton.itemAction.paper-icon-button-light.icon-button-conditionalfocuscolor.removeItemBtn,
+button.btnSessionSendMessage.paper-icon-button-light.itemAction.listItemButton,
+button.btnEditVirtualChannel.listItemButton.paper-icon-button-light,
+button.btnCopyVirtualChannel.listItemButton.paper-icon-button-light,
+button.btnDeleteVirtualChannel.listItemButton.paper-icon-button-light,
+i.md-icon.button-icon.button-icon-left.secondaryText.headerHelpButtonIcon,
+.headerHelpButtonText,
+.button-help {
+  background: transparent !important;
+  color: white;
+  transition: background 0.3s ease !important;
+  border-radius: 50% !important;
+}
+button.headerBackButton.headerButton.headerSectionItem.paper-icon-button-light.headerBackButton-showfullscreen:hover,
+button.headerBackButton.headerButton.headerSectionItem.paper-icon-button-light.headerBackButton-showfullscreen:active,
+button.headerCastButton.headerButton.headerSectionItem.md-icon.paper-icon-button-light:hover,
+button.headerCastButton.headerButton.headerSectionItem.md-icon.paper-icon-button-light:active,
+button.headerSearchButton.headerButton.headerSectionItem.md-icon.paper-icon-button-light.hiddenWhenBottomNavVisible:hover,
+button.headerSearchButton.headerButton.headerSectionItem.md-icon.paper-icon-button-light.hiddenWhenBottomNavVisible:active,
+button.headerUserButton.headerButton.headerSectionItem.paper-icon-button-light:hover,
+button.headerUserButton.headerButton.headerSectionItem.paper-icon-button-light:active,
+button.headerSettingsButton.headerButton.headerSectionItem.md-icon.paper-icon-button-light:hover,
+button.headerSettingsButton.headerButton.headerSectionItem.md-icon.paper-icon-button-light:active,
+button.md-icon.secondaryText.btnVoiceInput.flex-shrink-zero.paper-icon-button-light:hover,
+button.md-icon.secondaryText.btnVoiceInput.flex-shrink-zero.paper-icon-button-light:active,
+button.btnServerMoreMenu.paper-icon-button-light:hover,
+button.btnServerMoreMenu.paper-icon-button-light:active,
+button.btnRestartMenu.paper-icon-button-light:hover,
+button.btnRestartMenu.paper-icon-button-light:active,
+button.listItemButton.itemAction.md-icon.paper-icon-button-light:hover,
+button.listItemButton.itemAction.md-icon.paper-icon-button-light:active,
+button.btnSelectCachePath.emby-input-iconbutton.paper-icon-button-light:hover,
+button.btnSelectCachePath.emby-input-iconbutton.paper-icon-button-light:active,
+button.btnSelectCertPath.emby-input-iconbutton.paper-icon-button-light:hover,
+button.btnSelectCertPath.emby-input-iconbutton.paper-icon-button-light:active,
+button.dataGridItemCell-button.btnConfigureGridColumns.itemAction.md-icon.secondaryText.paper-icon-button-light:hover,
+button.dataGridItemCell-button.btnConfigureGridColumns.itemAction.md-icon.secondaryText.paper-icon-button-light:active,
+button.btnSelectCustomIntrosPath.emby-input-iconbutton.paper-icon-button-light:hover,
+button.btnSelectCustomIntrosPath.emby-input-iconbutton.paper-icon-button-light:active,
+button.btnSelectCodecIntrosPath.emby-input-iconbutton.paper-icon-button-light:hover,
+button.btnSelectCodecIntrosPath.emby-input-iconbutton.paper-icon-button-light:active,
+button.btnSelectUploadPath.emby-input-iconbutton.paper-icon-button-light:hover,
+button.btnSelectUploadPath.emby-input-iconbutton.paper-icon-button-light:active,
+.listItemImageContainer.listItemImageContainer-smallest.itemAction.listItemImageContainer-square.defaultCardBackground:hover,
+.listItemImageContainer.listItemImageContainer-smallest.itemAction.listItemImageContainer-square.defaultCardBackground:active,
+button.btnSelectBackupLocation.emby-input-iconbutton.paper-icon-button-light:hover,
+button.btnSelectBackupLocation.emby-input-iconbutton.paper-icon-button-light:active,
+button.emby-input-iconbutton.paper-icon-button-light:hover,
+button.emby-input-iconbutton.paper-icon-button-light:active,
+button.listItemButton.itemAction.paper-icon-button-light.icon-button-conditionalfocuscolor.removeItemBtn:hover,
+button.listItemButton.itemAction.paper-icon-button-light.icon-button-conditionalfocuscolor.removeItemBtn:active,
+button.btnSessionSendMessage.paper-icon-button-light.itemAction.listItemButton:hover,
+button.btnSessionSendMessage.paper-icon-button-light.itemAction.listItemButton:active,
+button.btnEditVirtualChannel.listItemButton.paper-icon-button-light:hover,
+button.btnEditVirtualChannel.listItemButton.paper-icon-button-light:active,
+button.btnCopyVirtualChannel.listItemButton.paper-icon-button-light:hover,
+button.btnCopyVirtualChannel.listItemButton.paper-icon-button-light:active,
+button.btnDeleteVirtualChannel.listItemButton.paper-icon-button-light:hover,
+button.btnDeleteVirtualChannel.listItemButton.paper-icon-button-light:active,
+i.md-icon.button-icon.button-icon-left.secondaryText.headerHelpButtonIcon:hover,
+i.md-icon.button-icon.button-icon-left.secondaryText.headerHelpButtonIcon:active,
+.headerHelpButtonText:hover,
+.headerHelpButtonText:active,
+.button-help:hover,
+.button-help:active {
+  background: rgba(20, 170, 223, 1) !important;
+  border-radius: 50% !important;
+}
+
+.paper-icon-button-light>.md-icon {
+    color: white !important;
+}
+
+.adjustHeaderForEmbeddedScroll {
+  right: 0;
+  background-color: transparent !important;
+}
+
+/* ===== TABS ===== */
+.tabs-viewmenubar.emby-tabs {
+  margin-left: 20px;
+}
+
+.tabs-viewmenubar-slider {
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+.tabs-viewmenubar-backgroundcontainer-backdropfilter,
+.tabs-viewmenubar-backgroundcontainer {
+  background: transparent!important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+
+/* ===== DRAWER / SIDEBAR ===== */
+.drawer-docked {
+  background: #24374a;
+  border-right: 0 !important;
+}
+
+.mainDrawer {
+  color: #ddd;
+  scrollbar-gutter: unset;
+}
+
+.mainDrawer::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.mainDrawer a.btnNavDrawerLogo {
+  display: none;
+}
+
+.navDrawerListItemImageContainer {
+  margin: 5px 0;
+}
+
+.txtNavDrawerSearch {
+  border-radius: 30px;
+  -webkit-padding-start: 2.8em;
+  padding-inline-start: 2.8em;
+}
+
+.navDrawerSearchIcon {
+  inset-inline-start: 0.55em;
+}
+
+.navDrawerSearchFieldContainer .emby-input {
+  padding-top: 15px;
+  padding-bottom: 15px;
+  border: 0;
+  background: transparent!important;
+}
+
+.mainDrawer .navDrawerSearchFieldContainer input[type="search"]::placeholder {
+  color: transparent;
+}
+
+i.navDrawerListItemIcon.listItemIcon.md-icon {
+  font-size: 180%;
+  color: #ddd;
+}
+
+.emby-collapse-expandIcon {
+  color: #ddd!important;
+  margin: 0.5em 0 0.15em;
+  -webkit-transform-origin: 30% 30%;
+  transform-origin: 30% 30%;
+}
+
+.navMenuOption-selected i.navDrawerListItemIcon.listItemIcon.md-icon {
+  color: var(--theme-primary-color);
+}
+
+.listItem.navMenuOption-selected, 
+.paper-icon-button-light:focus, 
+.navMenuOption-selected .listItem-content::before {
+  background-color: inherit !important;
+  border-radius: inherit !important;
+  color: inherit !important;
+}
+
+@media (min-width: 60em) {
+    .mainDrawer-mini .listItem {
+        width: 114% !important;
+    }
+}
+
+/* ===== FORMULARE & INPUTS ===== */
+form, .readOnlyContent {
+  max-width: 100ch;
+}
+
+textarea.txtCustomCss {
+  min-height: 2000px;
+}
+
+.emby-input, .emby-textarea, .emby-select, 
+span.checkboxLabel-lockedfield.checkboxLabel-lockedfield-embeddedintofield.checkboxLabel, 
+span.checkboxLabel-lockedfield.checkboxLabel-lockedfield-standalone.checkboxLabel {
+  background: rgb(0 0 0 / 30%) !important;
+}
+
+.emby-input:focus, .emby-textarea:focus {
+  border-color: var(--theme-primary-color) !important;
+}
+
+.emby-select:not(.nope):focus {
+  border-color: var(--theme-primary-color) !important;
+}
+
+.emby-select-wrapper-inline-disabled {
+  height: auto!important;
+}
+
+.emby-select-inline[disabled] {
+  padding: 7px !important;
+  font-weight: 500 !important;
+}
+
+.emby-select-backdropfilter.detailTrackSelect, 
+.fab-backdropfilter, 
+.raised-backdropfilter {
+  background: rgb(255 255 255 / 25%) !important;
+  -webkit-backdrop-filter: saturate(1) blur(1.5em) !important;
+  backdrop-filter: saturate(1) blur(1.5em) !important;
+  color: #fff !important;
+}
+
+.emby-checkbox:checked + .checkboxLabel:before {
+  border-color: var(--theme-primary-color) !important;
+  background-color: var(--theme-primary-color) !important;
+}
+
+.emby-toggle:checked + .toggleLabel::before {
+  background: var(--theme-primary-color) !important;
+  opacity: 0.5;
+}
+
+.emby-toggle:checked + .toggleLabel::after {
+  background: var(--theme-primary-color) !important;
+}
+
+.emby-toggle-focusring:focus:checked+.toggleLabel::after {
+  box-shadow: 0 0 0 0.7em rgb(220 154 12 / 16%)!important;
+}
+
+.chkLockedField:checked + span.checkboxLabel-lockedfield {
+  background: var(--theme-primary-color) !important;
+}
+
+/* ===== SUCHE ===== */
+input.searchfields-txtSearch {
+  padding: 15px;
+  margin-top: 15px;
+  border-radius: 30px;
+  border-color: transparent !important;
+}
+
+.searchSuggestionsList div {
+  display: inline-block;
+}
+
+.searchSuggestionsList a {
+  padding: 5px;
+  background: #ffffff0d;
+  border-radius: 30px;
+  margin: 5px;
+  color: rgb(255 255 255 / 50%);
+}
+
+.searchTabsContainer {
+  margin: 20px 0 20px;
+}
+
+.emby-input-actionsheet.opened .listItemImageContainer-backdrop, 
+.emby-input-actionsheet.opened .listItemImageContainer-banner, 
+.emby-input-actionsheet.opened .listItemImageContainer-fourThree, 
+.emby-input-actionsheet.opened .listItemImageContainer-portrait, 
+.emby-input-actionsheet.opened .listItemImageContainer-square {
+  width: 6.08em;
+  height: 3.26em;
+}
+
+.actionsheetListItemBody {
+  padding-inline-start: 1.6em!important;
+}
+
+.emby-input-actionsheet.opened {
+  top: 87px!important;
+  max-height: calc(90% - 87px - env(safe-area-inset-bottom, 0))!important;
+}
+
+/* ===== KARTEN & POSTER ===== */
+.virtualItemsContainer .backdropCard-horiz {
+  width: 18vw !important;
+  max-width: 380px !important;
+  min-width: 280px !important;
+}
+
+.cardPadder-portrait, .cardPadder-backdrop, .cardPadder-square, 
+.cardContent-background, .defaultCardBackground {
+  box-shadow: 5px 5px 5px 0px rgba(0, 0, 0, 0.35) !important;
+  background-color: rgb(0 0 0 / 15%)!important;
+  overflow: hidden;
+}
+
+.actionSheetItemImageContainer-transparent {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.defaultCardBackground0, .defaultCardBackground1, .defaultCardBackground2, 
+.defaultCardBackground3, .defaultCardBackground4, .defaultCardBackground5, 
+.defaultCardBackground6, .defaultCardBackground7, .defaultCardBackground8, 
+.defaultCardBackground9, .defaultCardBackground10 {
+  background-color: transparent !important;
+}
+
+.cardContent-shadow {
+  background-color: transparent!important;
+}
+
+.virtualScrollItem.card.fourThreeCard .cardBox {
+  overflow: hidden!important;
+}
+
+.countIndicator {
+  background: var(--theme-primary-color) !important;
+  -webkit-border-radius: 50%;
+  border-radius: 50%;
+  margin: 2px;
+  color: white !important;
+}
+
+.cardIndicator.cardCountIndicator.CountIndicator.countIndicator {
+  position: absolute;
+  top: 22px;
+  bottom: auto;
+  right: 2px;
+}
+
+i.cardIndicator.cardPlayedIndicator.playedIndicator.md-icon {
+  display: none;
+}
+
+.chkCardSelectContainer {
+  top: unset;
+  bottom: 0;
+}
+
+/* ===== HOVER EFFEKTE ===== */
+.card-hoverable {
+  transition: transform 0.3s ease, z-index 0s;
+}
+
+.card-hoverable:hover {
+  transform: scale(1.05);
+  z-index: 10 !important;
+}
+
+.card-hoverable:hover .cardOverlayContainer {
+  border: 2px solid var(--theme-primary-color);
+  border-radius: 4px;
+}
+
+.peopleItemsContainer .card-hoverable:hover {
+  transform: scale(1.1);
+}
+
+.peopleItemsContainer .card-hoverable:hover .cardOverlayContainer {
+  border: 2px solid var(--theme-primary-color);
+  box-sizing: border-box;
+  border-radius: 100%;
+  height: 150px !important;
+}
+
+.itemsContainer {
+  overflow: visible !important;
+}
+
+/* ===== OVERLAY BUTTONS ===== */
+.cardOverlayButton-br {
+  bottom: 2px;
+  top: auto;
+  right: -19px;
+  padding: 0 20px;
+}
+
+.cardOverlayButton-br.buttonItems {
+  -webkit-column-gap: 0.2ch !important;
+  column-gap: 0.2ch !important;
+}
+
+.cardOverlayButton-hover {
+  padding: .5em .1em !important;
+  border: 0!important;
+  box-shadow: rgba(0, 0, 0, 0.3) 0px 10px 15px!important;
+}
+
+.cardOverlayFab-primary {
+  font-size: 400% !important;
+}
+
+.cardOverlayButtonIcon:not([aria-label="Open in New Window"]), 
+.listItemOverlayButtonIcon {
+  background-color: var(--theme-primary-color) !important;
+}
+
+.cardOverlayContainer .cardOverlayButton-br .cardOverlayButton[is="emby-playstatebutton"], 
+.cardOverlayContainer .cardOverlayButton-br .cardOverlayButton[is="paper-icon-button-light"], 
+.cardOverlayContainer .cardOverlayButton-br .cardOverlayButton[is="emby-ratingbutton"] {
+  color: transparent !important;
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none!important;
+}
+
+.cardOverlayContainer.itemAction:hover .cardOverlayButton-br .cardOverlayButton[is="emby-playstatebutton"], 
+.cardOverlayContainer.itemAction:hover .cardOverlayButton-br .cardOverlayButton[is="paper-icon-button-light"], 
+.cardOverlayContainer.itemAction:hover .cardOverlayButton-br .cardOverlayButton[is="emby-ratingbutton"] {
+  color: #fff !important;
+  background: none !important;
+  border-color: none !important;
+}
+
+.cardOverlayContainer.itemAction:hover .cardOverlayButton-br .cardOverlayButton[is="emby-ratingbutton"][data-isfavorite="false"] {
+  color: var(--theme-primary-color) !important;
+}
+
+.cardOverlayButton-br .cardOverlayButton-hover.playstatebutton-icon {
+  overflow: visible !important;
+  margin: 0 7px 0 0;
+}
+
+.cardOverlayButton[data-played="true"]:before {
+  width: 60px;
+  height: 30px;
+  transform: rotate(45deg);
+  content: '✓';
+  background: var(--theme-primary-color);
+  position: absolute;
+  border-style: solid;
+  border-width: 1px;
+  border-color: rgba(255, 255, 255, 0.2);
+  top: -10px;
+  right: -125px;
+  z-index: 1;
+  font-size: 0px;
+  padding: 2px;
+  box-shadow: rgba(0, 0, 0, 0.3) 0px 10px 15px;
+}
+
+/* ===== WATCHED/PLAYED INDICATORS ===== */
+.cardImageContainer i.cardPlayedIndicator:before, 
+.listItemImageContainer i.listItemPlayedIndicator:before {
+  width: 70px;
+  height: 30px;
+  transform: rotate(45deg);
+  content: ' ';
+  background: var(--theme-primary-color);
+  z-index: -1;
+  position: absolute;
+  border-style: solid;
+  border-width: 1px;
+  border-color: rgba(255, 255, 255, 0.2);
+  top: -15px;
+}
+
+.cardImageContainer i.cardPlayedIndicator, 
+.listItemImageContainer i.listItemPlayedIndicator {
+  overflow: visible;
+  z-index: 1;
+  background: none;
+  box-shadow: none;
+  font-size: 0px;
+  padding: 2px;
+}
+
+i.listItemIndicator.listItemPlayedIndicator.playedIndicator.md-icon {
+  display: none;
+}
+
+.listViewUserDataButton.playstatebutton-icon {
+  overflow: visible !important;
+  color: #fff !important;
+}
+
+.listViewUserDataButton.playstatebutton-icon:hover, 
+.listViewUserDataButton.playstatebutton-icon:not(.playstatebutton-icon-played):hover, 
+.listViewUserDataButton.playstatebutton-icon.playstatebutton-icon-played {
+  color: #fff !important;
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+.listViewUserDataButton[data-played="false"]:before {
+  width: 8px;
+  height: 500px;
+  transform: unset;
+  content: '';
+  background: var(--theme-primary-color);
+  position: absolute;
+  border-style: solid;
+  border-width: 1px;
+  border-color: rgba(255, 255, 255, 0.2);
+  top: -200px;
+  right: -85px;
+  z-index: 1;
+  font-size: 10px;
+  padding: 2px;
+}
+
+.trackList[data-monitor="PlaylistItems"] .listViewUserDataButton[data-played="false"]:before {
+  right: -140px !important;
+}
+
+.listViewUserDataButton .playstatebutton-icon-played, 
+.detailButton-content .playstatebutton-icon-played, 
+.cardOverlayButton .playstatebutton-icon-played {
+  color: var(--theme-primary-color) !important;
+}
+
+/* ===== MULTI-SELECT ===== */
+.item-multiselected .cardPadder-portrait, 
+.item-multiselected .cardPadder-backdrop, 
+.item-multiselected .cardPadder-square {
+  background: rgb(255 255 255 / 15%) !important;
+  border: 2px solid #fff;
+}
+
+.item-multiselected .cardOverlayContainer.itemAction, 
+.item-multiselected .cardOverlayContainer.itemAction:hover {
+  background-color: rgb(20 170 223 / 50%) !important;
+}
+
+.multi-select-active .cardOverlayButton-br .cardOverlayButton {
+  opacity: 1 !important;
+  display: flex !important;
+}
+
+.multi-select-active button[aria-label="Played"].cardOverlayButton:not(.chkCardSelectContainer) {
+  opacity: 1 !important;
+  display: inline-block !important;
+}
+
+.multi-select-active button[aria-label="Played"].cardOverlayButton:not(.chkCardSelectContainer):before {
+  right: -56px !important;
+}
+
+.multi-select-active .listItemButton[is="emby-playstatebutton"] {
+  display: inline-block !important;
+}
+
+.multi-select-active .listItemButton[is="emby-playstatebutton"]:before {
+  right: -45px;
+}
+
+
+.selectionCommandsPanel {
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  box-sizing: border-box !important;
+  border-radius: 40px !important;
+  margin: auto !important;
+  margin-top: 10px !important;
+  margin-bottom: 10px !important;
+  width: 100% !important;
+  max-width: 50% !important;
+  font-size: 12px !important;
+  border: 0 !important;
+  background-color: rgb(20, 170, 223) !important;
+  -webkit-box-shadow: 0px 0px 10px 0px rgb(0 0 0 / 40%) !important;
+  -moz-box-shadow: 0px 0px 10px 0px rgb(0 0 0 / 40%) !important;
+  box-shadow: 0px 0px 10px 0px rgb(0 0 0 / 40%) !important;
+}
+
+label.chkItemSelectContainer.chkCardSelectContainer.cardOverlayButton.cardOverlayButton-hover.itemAction.emby-checkbox-label {
+  padding: 10px !important;
+}
+
+.chkListItemSelectContainer {
+  font-size: 50% !important;
+}
+
+.chkListItemSelectContainer .checkboxLabel.chkListItemSelect-checkboxLabel:before {
+  border-color: rgb(255 255 255 / 30%) !important;
+}
+
+/* ===== PROGRESS BARS ===== */
+.itemProgressBar {
+  background: rgb(0 0 0 / 10%) !important;
+  -webkit-backdrop-filter: saturate(1) blur(1.5em) !important;
+  backdrop-filter: saturate(1) blur(1.5em) !important;
+  min-height: 4px;
+}
+
+.resumeInfoDetail .itemProgressBar {
+  background: rgb(255 255 255 / 20%) !important;
+}
+
+.itemProgressBarForeground {
+  background-color: var(--theme-primary-color) !important;
+}
+
+/* ===== PEOPLE SECTION ===== */
+.verticalSection.peopleSection .peopleItemsContainer {
+  margin-left: -10px;
+}
+
+.verticalSection.peopleSection .peopleItemsContainer .cardOverlayButton-br {
+  right: auto !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  bottom: -5px;
+}
+
+div.peopleSection .cardPadder-portrait {
+  border-radius: 100%;
+  overflow: hidden;
+  width: 25vw;
+  height: 25vw;
+  max-width: 150px;
+  max-height: 150px;
+  margin: 0 auto 5px !important;
+  padding-bottom: 0px;
+}
+
+.peopleItemsContainer .coveredImage {
+  object-fit: cover;
+}
+
+div.peopleSection .coveredImage {
+  background-size: cover;
+  background-position: center;
+}
+
+.verticalSection.peopleSection button i.cardImageIcon.cardImageIcon-center.md-icon {
+  background-color: rgb(255 255 255 / 20%) !important;
+  padding: 30%;
+  border-radius: 100%;
+}
+
+.cardText-secondary {
+  opacity: 0.7;
+}
+
+.cardTextCentered {
+  text-align: center !important;
+}
+
+/* ===== DETAIL SEITEN ===== */
+.detailImageContainer-main {
+  overflow: visible !important;
+  padding: 20px;
+  margin-right: 2.5em !important;
+  margin-bottom: 30px !important;
+}
+
+.detailImageContainer-main.detailImageContainer-portrait {
+  max-width: 300px;
+}
+
+.detailImageContainerCard-cardBox {
+  margin: 0!important;
+}
+
+.detailImageContainer .cardBox.cardBox-touchzoom {
+  margin: 0 !important;
+}
+
+.detailImageContainer .card.detailImageContainerCard.card-hoverable {
+  box-shadow: 5px 5px 17px -5px rgb(0 0 0 / 50%);
+  width: 117% !important;
+}
+
+.detailLogo {
+  background-size: contain !important;
+  width: 100% !important;
+  height: 18em !important;
+  bottom: unset !important;
+  max-width: 70%;
+  left: 0;
+  right: 0;
+  background-position: top center !important;
+  font-size: 100% !important;
+}
+
+.itemName-primary-logo {
+  width: auto!important;
+  min-width: 100px;
+  height: 5em !important;
+}
+
+.topDetailsContainer .overview-text {
+  max-width: 850px;
+  font-size: 0.85em;
+  line-height: 1.65;
+  max-height: 45px;
+}
+
+.topDetailsContainer .overview-main {
+  margin: 0.3em 0 1em;
+}
+
+.topDetailsContainer .topDetailsMain {
+  padding-bottom: 0;
+}
+
+.detailTextContainer .verticalFieldItem {
+  margin-bottom: 13px!important;
+}
+
+.detailTextContainer .trackSelections .selectLabel {
+  min-width: 60px;
+}
+
+.detailTextContainer .trackSelections .detailTrackSelect {
+  max-width: 310px;
+  width: 55vw !important;
+}
+
+.flex-grow.detailTextContainer {
+  display: inline-block!important;
+  overflow: visible;
+}
+
+.flex-grow.detailTextContainer form.trackSelections {
+  order: 3 !important;
+}
+
+.selectContainer.selectContainer-inline.selectAudioContainer.trackSelectionFieldContainer {
+  width: 100%;
+}
+
+form.verticalFieldItem.trackSelections .selectLabelText {
+  min-width: 70px;
+}
+
+.mediaInfoPrimary .mediaInfoItem-border,
+.mediaInfoItem-border {
+  border: 0!important;
+}
+
+.mediaInfoItem:nth-last-child(2) a {
+  padding: 5px 10px;
+  background: rgb(255 255 255 / 15%);
+  margin-bottom: 5px;
+  margin-right: 5px;
+  -webkit-backdrop-filter: blur(5em);
+  backdrop-filter: blur(5em);
+}
+
+div.endsAt.detailEndsAt.mediaInfoItem {
+  visibility: hidden;
+}
+
+.detailMainContainerParent:not(.detailMainContainerParent-fade) .overview-container .overview-text {
+  height: auto;
+  max-height: unset;
+  margin-top: 30px;
+  overflow: visible;
+  text-overflow: unset;
+  display: block;
+  -webkit-box-orient: unset;
+  -webkit-line-clamp: unset;
+}
+
+.detailMainContainerParent:not(.detailMainContainerParent-fade) .btnReadMore {
+  display: none;
+}
+
+.detailMainContainerParent:not(.detailMainContainerParent-fade) .overview-container .button-link {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.verticalSection.verticalSection-cards.tagsSection .button-link, 
+.verticalSection.verticalSection-cards.tagsSection .button-link:hover {
+  padding: 5px 10px;
+  background: rgb(255 255 255 / 15%);
+  margin-bottom: 5px;
+  margin-right: 5px;
+  -webkit-backdrop-filter: blur(5em);
+  backdrop-filter: blur(5em);
+  text-decoration: none;
+}
+
+/* ===== DETAIL BUTTONS ===== */
+.mainDetailButtons {
+  margin: 5px 0 0px;
+}
+
+.detailButton:hover .detailButton-text {
+  opacity: 1;
+}
+
+.detailButton-text {
+  max-width: 10em !important;
+  font-size: 12px;
+  opacity: 0.7;
+  transition: 0.2s !important;
+  transition-delay: 0s;
+  font-family: 'Open Sans', Helvetica Neue, Helvetica, Arial, sans-serif;
+}
+
+/* Detail Buttons - Standard: Weißes Icon */
+.detailButtons .btnPlaystate[data-played="false"] i.playstatebutton-icon, 
+.detailButtons .md-icon, 
+.detailButtons .playButtonText {
+  color: #fff !important;
+}
+
+/* GESEHEN (data-played="true"): Blaues Icon */
+.detailButtons .btnPlaystate[data-played="true"] i.playstatebutton-icon {
+  color: rgba(20, 170, 223, 1) !important;
+}
+
+/* NICHT GESEHEN + Hover: Weißes Icon bleibt weiß */
+.detailButtons .btnPlaystate[data-played="false"] i.playstatebutton-icon:hover, 
+.detailButtons .btnPlaystate[data-played="false"]:hover i.playstatebutton-icon {
+  color: #fff !important;
+}
+
+/* Favoriten-Button - NICHT Favorit: Weißes Icon */
+.detailButtons .btnUserRating[data-isfavorite="false"] i.ratingbutton-icon,
+.detailButtons .btnUserRating i.ratingbutton-icon {
+  color: #fff !important;
+}
+
+/* Favoriten-Button - IST Favorit: Blaues Icon */
+.detailButtons .btnUserRating[data-isfavorite="true"] i.ratingbutton-icon,
+.detailButtons i.ratingbutton-icon-withrating {
+  color: rgba(20, 170, 223, 1) !important;
+}
+
+/* Detail Buttons - Standard: Weißes Icon */
+.detailButtons .btnPlaystate[data-played="false"] i.playstatebutton-icon, 
+.detailButtons .md-icon, 
+.detailButtons .playButtonText {
+  color: #fff !important;
+}
+
+/* GESEHEN (data-played="true"): Blaues Icon */
+.detailButtons .btnPlaystate[data-played="true"] i.playstatebutton-icon {
+  color: rgba(20, 170, 223, 1) !important;
+}
+
+/* GESEHEN + Hover: Weißes Icon (wegen blauem Hintergrund) */
+.detailButtons .btnPlaystate[data-played="true"]:hover i.playstatebutton-icon {
+  color: #fff !important;
+}
+
+/* NICHT GESEHEN + Hover: Weißes Icon bleibt weiß */
+.detailButtons .btnPlaystate[data-played="false"] i.playstatebutton-icon:hover, 
+.detailButtons .btnPlaystate[data-played="false"]:hover i.playstatebutton-icon {
+  color: #fff !important;
+}
+
+/* Favoriten-Button - NICHT Favorit: Weißes Icon */
+.detailButtons .btnUserRating[data-isfavorite="false"] i.ratingbutton-icon,
+.detailButtons .btnUserRating i.ratingbutton-icon {
+  color: #fff !important;
+}
+
+/* Favoriten-Button - IST Favorit: Blaues Icon */
+.detailButtons .btnUserRating[data-isfavorite="true"] i.ratingbutton-icon,
+.detailButtons i.ratingbutton-icon-withrating {
+  color: rgba(20, 170, 223, 1) !important;
+}
+
+/* Favoriten-Button - IST Favorit + Hover: Weißes Icon */
+.detailButtons .btnUserRating[data-isfavorite="true"]:hover i.ratingbutton-icon,
+.detailButtons .btnUserRating:hover i.ratingbutton-icon-withrating {
+  color: #fff !important;
+}
+
+/* EPG Filter Buttons - INAKTIV: Weißes Icon/Text */
+button.guide-filter-button.btnGuideTag:not(.emby-tab-button-active),
+button.guide-filter-button.btnGuideCategory:not(.emby-tab-button-active) {
+  color: white !important;
+}
+
+/* EPG Filter Buttons - INAKTIV + Hover: Weißes Icon/Text bleibt */
+button.guide-filter-button.btnGuideTag:not(.emby-tab-button-active):hover,
+button.guide-filter-button.btnGuideCategory:not(.emby-tab-button-active):hover {
+  color: white !important;
+}
+
+/* EPG Filter Buttons - AKTIVIERT: Blaues Icon/Text */
+button.guide-filter-button.btnGuideTag.emby-tab-button-active,
+button.guide-filter-button.btnGuideCategory.emby-tab-button-active {
+  color: rgba(20, 170, 223, 1) !important;
+}
+
+/* EPG Filter Buttons - AKTIVIERT + Hover: Weißes Icon/Text */
+button.guide-filter-button.btnGuideTag.emby-tab-button-active:hover,
+button.guide-filter-button.btnGuideCategory.emby-tab-button-active:hover {
+  color: white !important;
+  background: rgba(20, 170, 223, 1) !important;
+}
+
+/* Episoden-Listen Buttons - INAKTIV: Weißes Icon */
+button.listViewFavoriteButton[data-isfavorite="false"],
+button.listViewPlayedButton[data-played="false"] {
+  color: white !important;
+  background: transparent !important;
+}
+
+/* Episoden-Listen Buttons - INAKTIV + Hover: Weißes Icon bleibt */
+button.listViewFavoriteButton[data-isfavorite="false"]:hover,
+button.listViewPlayedButton[data-played="false"]:hover {
+  color: white !important;
+  background: rgba(20, 170, 223, 1) !important;
+}
+
+/* Episoden-Listen Buttons - AKTIVIERT (Favorit/Gesehen): Blaues Icon */
+button.listViewFavoriteButton[data-isfavorite="true"],
+button.listViewPlayedButton[data-played="true"],
+button.listViewPlayedButton.playstatebutton-icon-played {
+  color: rgba(20, 170, 223, 1) !important;
+  background: transparent !important;
+}
+
+/* Episoden-Listen Buttons - AKTIVIERT + Hover: Weißes Icon, blauer Hintergrund */
+button.listViewFavoriteButton[data-isfavorite="true"]:hover,
+button.listViewPlayedButton[data-played="true"]:hover,
+button.listViewPlayedButton.playstatebutton-icon-played:hover {
+  color: white !important;
+  background: rgba(20, 170, 223, 1) !important;
+}
+
+/* Homescreen Tab Buttons - Hover: Blauer Hintergrund */
+button.emby-tab-button.main-tab-button:hover,
+button.emby-tab-button.main-tab-button.emby-tab-button-active:hover {
+  color: white !important;
+  background: rgba(20, 170, 223, 1) !important;
+}
+
+.emby-button:focus-visible {
+  color: inherit!important;
+}
+
+.emby-button.raised {
+  background: rgb(255 255 255 / 30%) !important;
+}
+
+.btnMainPlay i.md-icon.detailButton-icon, 
+.btnResume i.md-icon.detailButton-icon {
+  background: var(--theme-primary-color);
+}
+
+i.md-icon.detailButton-icon {
+  margin-bottom: 5px;
+}
+
+.ratingbutton-icon-withrating {
+  color: var(--theme-primary-color) !important;
+}
+
+/* ===== SECTIONS ORDERING ===== */
+.details-additionalContent.padded-bottom-page.details-additionalContent-withbackdrop,
+.details-additionalContent.padded-bottom-page {
+  display: flex;
+  -webkit-box-orient: vertical;
+  -webkit-box-direction: normal;
+  -webkit-flex-direction: column;
+  flex-direction: column;
+  -webkit-flex-wrap: nowrap;
+  flex-wrap: nowrap;
+  margin-top: 0px;
+}
+
+div.verticalSection.seriesItemsSection { order: 1; }
+div.verticalSection.itemNextUpSection { order: 2; }
+div.verticalSection.peopleSection { order: 3; margin-top: 20px; }
+div.verticalSection.linksSection { order: 3; }
+div.verticalSection.itemNextUpSection, 
+div.verticalSection.moreFromSeasonSection { 
+  order: 4;
+  -webkit-backdrop-filter: saturate(1.2) blur(1.5em);
+  backdrop-filter: saturate(1.2) blur(1.5em);
+  background: #ffffff15 !important;
+  padding: 10px 30px 20px;
+  border-radius: 5px;
+  border-bottom: 1px solid #ffffff15;
+  margin-top: 20px;
+  margin-bottom: 30px;
+}
+div.verticalSection.chaptersSection { order: 5; }
+div.verticalSection.appearsOnListsSection { order: 6; }
+div.verticalSection.aboutSection { 
+  order: 7;
+  margin-bottom: 30px;
+  font-size: 15px!important;
+}
+div.verticalSection.tagsSection { order: 8; }
+div.verticalSection.audioVideoMediaInfo { order: 9; }
+div.verticalSection.similarSection { order: 10; }
+div.verticalSection.similarOnLiveTVCollapsible { order: 11; }
+div.verticalSection.seriesScheduleSection { order: 12; }
+
+div.details-additionalContent {
+  animation: fadeInAnimation ease 1s;
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+}
+
+@keyframes fadeInAnimation {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.details-additionalContent-withbackdrop .verticalSection.itemNextUpSection, 
+.details-additionalContent-withbackdrop .verticalSection.itemNextUpSection .cardText-first {
+  text-align: left !important;
+}
+
+.itemNextUpSection .cardPadder-backdrop {
+  height: 120px;
+  text-align: left;
+}
+
+.sectionTitleContainer {
+  margin-top: 0;
+}
+
+.sectionTitleMoreIcon {
+  font-size: 90%;
+  margin-left: 3px;
+  margin-top: 3px;
+}
+
+.verticalSection-extrabottompadding {
+  margin-bottom: 0.5em;
+}
+
+.verticalSection.section0 .cardText-first-padded {
+  padding-top: 0.82em;
+}
+
+.verticalSection.section0 .itemsContainer .cardPadder-backdrop {
+  box-shadow: 0px 10px 10px rgb(0 0 0 / 40%);
+}
+
+/* ===== SERIES/EPISODES ===== */
+.verticalSection.seriesItemsSection .itemsContainer:not(.allEpisodesItemsContainer) .emby-scroller.scrollX {
+  overflow-x: visible!important;
+  overflow-y: visible!important;
+  display: block!important;
+}
+
+.verticalSection.seriesItemsSection .itemsContainer:not(.allEpisodesItemsContainer) .portraitCard-horiz {
+  width: 8.5vw!important;
+  max-width: 170px!important;
+  min-width: 120px!important;
+  float: left!important;
+  display: inline-block!important;
+  position: unset!important;
+}
+
+.verticalSection.seriesItemsSection .itemsContainer:not(.allEpisodesItemsContainer) {
+  display: inline-block !important;
+  width: 100% !important;
+  min-width: unset!important;
+  min-height: 230px!important;
+  height: auto !important;
+  contain: unset!important;
+}
+
+.verticalSection.seriesItemsSection .card.portraitCard.card-hoverable.focusable, 
+.verticalSection.seriesItemsSection .card.squareCard.card-hoverable.focusable {
+  float: left;
+}
+
+.detailImageContainer.detailImageContainer-main.flex.flex-direction-column.justify-content-center.itemsContainer.detailImageContainer-hidemobile.detailImageContainer-backdrop.generalItemsContainer, 
+.detailImageContainer.detailImageContainer-main.flex.flex-direction-column.justify-content-center.itemsContainer.detailImageContainer-hidemobile.detailImageContainer-fourThree.generalItemsContainer {
+  order: 2;
+  width: clamp(35vw, 49.5em, 28vw) !important;
+  margin-right: 90px !important;
+  margin-left: 2.5em !important;
+  margin-top: 46px !important;
+}
+
+div.verticalSection.scenesSection { order: 3; }
+div.verticalSection.scenesSection .cardBox { margin-left: 0px!important; }
+div.verticalSection.scenesSection button.itemAction.cardContent-button {
+  background-color: #000!important;
+  opacity: 0.9;
+}
+
+div.verticalSection .similarItemsContainer .cardBox { margin-left: 0!important; }
+div.verticalSection.moreFromSeasonSection .cardBox { margin-left: 0!important; }
+
+div.verticalSection.chaptersSection .emby-scroller .cardImage {
+  background-color: #000;
+}
+
+.coveredImage {
+  object-fit: fill;
+}
+
+.emby-scroller .dialogContentInner .cardImage {
+  object-fit: contain !important;
+}
+
+.undefinedmissingIndicator, .undefinedunairedIndicator, 
+.missingIndicator, .unairedIndicator {
+  background: #ababab52;
+  padding: 5px 15px;
+  margin: 10px 0;
+  font-size: 12px;
+  border-radius: 5px;
+}
+
+/* ===== AUDIO/VIDEO INFO ===== */
+div.verticalSection.audioVideoMediaInfo .mediaSource.emby-scrollbuttons-scroller .emby-scroller {
+  margin-top: 20px;
+}
+
+/* ===== LISTEN ===== */
+div.listItemBodyText.listItemBodyText-nowrap.listItemBodyText-lf {
+  font-weight: bold;
+}
+
+.listItemImage.listItemImage-large.listItemImage-backdrop.coveredImage {
+  background-size: 100%;
+}
+
+.listItemImage:not(.coveredImage) {
+  -webkit-background-size: cover !important;
+  background-size: cover !important;
+}
+
+.listItemImage-backdrop {
+  -webkit-background-size: cover !important;
+  background-size: cover !important;
+  /*object-fit: cover !important;*/
+}
+
+/*.listItemImageContainer-backdrop, .listItemImageContainer-banner, 
+.listItemImageContainer-fourThree, .listItemImageContainer-portrait, 
+.listItemImageContainer-square {
+  height: 6vw;
+}*/
+
+.listItemImageContainer-large.listItemImageContainer-fourThree {
+  width: 11vw !important;
+  height: 8vw !important;
+  aspect-ratio: auto !important;
+}
+
+.listItem-overview.listItemBodyText.listItemBodyText-secondary {
+  max-height: 23px;
+  transition: max-height 1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition-delay: 0s;
+  height: min-content !important;
+  line-height: 1.4;
+}
+
+.listItem-overview.listItemBodyText.listItemBodyText-secondary:hover {
+  max-height: 900px;
+}
+
+.listItem-hoverable:hover, .listItem-hoverable:hover .chkListItemSelectContainer {
+  border-color: #ffffff15 !important;
+}
+
+.detailsListItem.focusable.listItem-hoverable:hover, 
+.detailsListItem.focusable.listItem-hoverable:hover .chkListItemSelectContainer {
+  background: transparent !important;
+}
+
+.listItem-border {
+  border-bottom-width: 0 !important;
+}
+
+.listItemOverlayButton-hover:hover .listItemOverlayButtonIcon {
+  -webkit-transform: scale(1.3)!important;
+  transform: scale(1.3)!important;
+  box-shadow: rgba(0, 0, 0, 0.3) 0px 10px 15px!important;
+}
+
+.virtualScrollItem.listItem.itemAction.focusable.listItemCursor.listItem-hoverable.listItem-largeImage.listItem-withContentWrapper.detailsListItem, 
+.listItem.itemAction.focusable.listItemCursor.listItem-hoverable.listItem-withContentWrapper.detailsListItem, 
+.listItem.itemAction.listItemCursor.listItem-hoverable.detailsListItem {
+  overflow: hidden !important;
+}
+
+/* ===== TRACKLISTEN ===== */
+.trackList .detailsListItem.listItem {
+  -webkit-backdrop-filter: saturate(1) blur(3em);
+  backdrop-filter: saturate(1) blur(3em);
+  background: #ffffff15 !important;
+  padding: 10px 30px;
+  border-radius: 5px;
+  border-bottom: 1px solid #ffffff15;
+  box-sizing: border-box!important;
+}
+
+.trackList .detailsListItem.listItem:nth-child(odd) {
+  background: #ffffff10 !important;
+}
+
+.trackList.vertical-list .listItemImageContainer button.listItemImageButton.itemAction.paper-icon-button-light {
+  opacity: 0;
+}
+
+.trackList.vertical-list .listItemImageContainer:hover button.listItemImageButton.itemAction.paper-icon-button-light {
+  opacity: 1;
+  -webkit-transition: opacity .1s ease-in-out;
+  -o-transition: opacity .1s ease-in-out;
+  transition: opacity .1s ease-in-out;
+}
+
+.trackList.vertical-list {
+  margin-left: 0px!important;
+}
+
+.trackList.vertical-list.trackList-marginleftcards .listItem {
+  -webkit-backdrop-filter: saturate(1) blur(3em);
+  backdrop-filter: saturate(1) blur(3em);
+  background: #ffffff15 !important;
+  padding: 5px 30px;
+  border-radius: 5px;
+  border-bottom: 1px solid #ffffff15;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.trackList.vertical-list.trackList-marginleftcards .listItem:nth-child(odd) {
+  background: #ffffff10 !important;
+}
+
+.trackList .listItemOverlayButton-imagehover {
+  background: rgba(0,0,0,.0)!important;
+}
+
+.trackList .listItemBody {
+  padding: .35em 1.3em;
+}
+
+.trackList .listItemImageContainer {
+  box-shadow: 5px 5px 10px -5px rgb(0 0 0 / 50%)
+}
+
+.trackList .listItemImageContainer-medium.listItemImageContainer-square {
+  height: 5em !important;
+  width: 5em !important;
+}
+
+.trackList[data-monitor="PlaylistItems"] .listItem-border::after {
+  display: none;
+}
+
+/* ===== BACKGROUNDS ===== */
+.backgroundContainer {
+  background-color: unset!important;
+}
+
+.backgroundContainer, .dialog:not(.chapterThumbImageContainer):not(.sliderBubble), 
+.formDialogFooter:not(.formDialogFooter-clear) {
+  background: linear-gradient(77deg, rgba(8, 1, 18, 1) 0, rgba(8, 1, 18, 0.9) 48%, rgba(8, 1, 18, 0.8) 100%) !important;
+}
+
+.backgroundContainer.itemBackgroundContainer.withBackdrop, 
+.backgroundContainer.withBackdrop {
+  -webkit-backdrop-filter: saturate(1.5);
+  backdrop-filter: saturate(1.5);
+}
+
+.backgroundContainer.backgroundContainer-transparent {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  background: none!important;
+}
+
+.backdropImage {
+  background-position: top center;
+  object-position: top center !important;
+  backdrop-filter: blur(3px) !important;
+  contain: style size !important;
+  position: fixed !important;
+  top: 0 !important;
+  right: 0 !important;
+  left: auto !important;
+  inset-inline-start: auto !important;
+  width: 50% !important;
+  height: 68% !important;
+  z-index: -1 !important;
+  touch-action: none !important;
+  mask-image: linear-gradient(to right, transparent 0%, black 40%), linear-gradient(to top, transparent 0%, black 40%);
+  mask-composite: intersect;
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 40%), linear-gradient(to top, transparent 0%, black 40%);
+  -webkit-mask-composite: intersect;
+  animation: imgZoomBlur 8s ease-in-out forwards; /* forwards = bleibt am Ende, einmalig */
+  transform-origin: 60% 25%;
+}
+
+.backdropImage:not(.displayingBackdropImage) {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  animation: none !important;
+}
+
+/* Einmalige Animation: Start verschwommen → Ende scharf & gezoomt */
+@keyframes imgZoomBlur {
+  0% { 
+    transform: scale(1);
+    filter: blur(8px);
+  }
+  100% { 
+    transform: scale(1.2);
+    filter: blur(0px);
+  }
+}
+
+/* ===== DIALOGE ===== */
+.formDialogHeader:not(.formDialogHeader-clear) {
+  background: transparent !important;
+}
+
+.formDialogFooter:not(.formDialogFooter-clear) {
+  background: linear-gradient(77deg, rgba(8, 1, 18, 1) 0, rgba(8, 1, 18, 0.9) 48%, rgba(8, 1, 18, 0.8) 100%) !important;
+  -webkit-backdrop-filter: saturate(1) blur(20px) !important;
+  backdrop-filter: saturate(1) blur(20px) !important;
+  background-color: rgb(80 94 110 / 65%) !important;
+  box-shadow: 0px 5px 25px 5px rgba(0,0,0,0.34) !important;
+}
+
+/* ===== COLLECTIONS ===== */
+.details-additionalContent .linkedItems .cardBox {
+  overflow: hidden;
+}
+
+.details-additionalContent .linked-Episode-section img.cardImage {
+  object-fit: cover;
+}
+
+/* ===== SCROLLING ===== */
+.scrollbuttoncontainer {
+  background: transparent !important;
+}
+
+button.emby-scrollbuttons-scrollbutton.md-icon.paper-icon-button-light {
+  -webkit-box-shadow: 0px 0px 15px 0px rgb(0 0 0 / 99%) !important;
+  -moz-box-shadow: 0px 0px 15px 0px rgb(0 0 0 / 99%) !important;
+  box-shadow: 0px 0px 15px 0px rgb(0 0 0 / 99%) !important;
+  -webkit-backdrop-filter: blur(0.5em) saturate(0.5) !important;
+  backdrop-filter: blur(0.5em) saturate(0.5) !important;
+  margin: -20px 30px 0;
+  background: #ffffff30;
+  font-size: 1.2em;
+}
+
+/* ===== LOADING ANIMATION ===== */
+.withTabs.page .portraitCard .cardImageContainer i.cardImageIcon.md-icon {
+  margin: 0 auto;
+  box-sizing: border-box;
+  width: 70px;
+  height: 70px;
+  border-radius: 100%;
+  animation: rotate 1s linear infinite;
+  border: 2px solid transparent;
+  border-top: 5px solid var(--theme-primary-color);
+  font-size: 0 !important;
+}
+
+@keyframes rotate {
+  0% { transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg); }
+  100% { transform: rotateX(0deg) rotateY(0deg) rotateZ(360deg); }
+}
+
+/* ===== ICONS ===== */
+.md-icon {
+  font-variation-settings: "FILL" 1, "wght" 400, "GRAD" 0, "opsz" 24;
+}
+
+.paper-icon-button-light:active {
+  color: var(--theme-primary-color) !important;
+}
+
+div.emby-scroller .filter-active {
+  background: var(--theme-primary-color) !important;
+}
+
+.serverUpToDateCheckIcon {
+  background-color: #14aadf !important;
+}
+
+.mdl-spinner__layer-1 {
+  border-color: var(--theme-primary-color)!important;
+}
+
+/* ===== LINKS ===== */
+a:not(.emby-button), .cardText.cardTextCentered.cardText-first > button {
+  color: #fff !important;
+}
+
+a.button-link.btnReadMore.flex-shrink-zero.secondaryText.emby-button {
+  margin-bottom: -4px !important;
+  margin-left: 39px !important;
+  margin-right: 140px !important;
+}
+
+/* ===== LISTS & PAPER ===== */
+.paperList, .visualCardBox {
+  background-color: rgb(0 0 0 / 20%)!important;
+}
+
+.bannerCard .paperList, .bannerCard .visualCardBox {
+  background-color: rgb(255 255 255 / 10%)!important;
+}
+
+.infoBanner {
+  background: #0000000f !important;
+}
+
+/* ===== DASHBOARD ===== */
+.dashboardSection .listItemImageContainer-square {
+  height: 40px;
+}
+
+.dashboardSection .listItemBody {
+  display: unset!important;
+  min-height: unset!important;
+}
+
+.dashboardSection .listItemBodyText.listItemBodyText-nowrap.listItemBodyText.listItemBodyText-nowrap.listItemBodyText-lf.listItemBodyText-lf {
+  display: inline-block!important;
+  width: 29%;
+  float: left;
+  padding-right: 1%;
+}
+
+/* ===== MINI AUDIO PLAYER ===== */
+.appfooter {
+  z-index: 99999999999!important;
+  position: fixed!important;
+  bottom: 0!important;
+  left: 0!important;
+  right: 0!important;
+  view-transition-name: none!important;
+  background: none !important;
+}
+
+.nowPlayingBarTop {
+  border-top: .08em solid rgba(255, 255, 255, .08);
+  -webkit-backdrop-filter: saturate(1) blur(20px) !important;
+  backdrop-filter: saturate(1) blur(20px) !important;
+  background-color: transparent !important;
+  box-shadow: 0px 5px 25px 5px rgba(0, 0, 0, 0.34) !important;
+  border-bottom: 0.08em solid rgba(255, 255, 255, .08);
+}
+
+.nowPlayingView-withbackdrop .sliderBubble.dialog.chapterThumbContainer {
+  width: auto !important;
+  height: auto !important;
+  padding: 0 !important;
+}
+
+/* ===== VIDEO PLAYER ===== */
+.view-videoosd-videoosd div {
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+.videoPlayerContainer:not(.videoPlayerContainer-loadingmedia) {
+  background-color: #000 !important;
+}
+.skinHeader.semiTransparent::before {
+  display: none;
+}
+.skinHeader.videoOsdHeader {
+  margin-top: calc(1.5em + env(safe-area-inset-top, 0)) !important;
+  padding-top: 0 !important;
+  right: unset;
+}
+.videoOsdHeader button.headerBackButton {
+  margin-left: 30px !important;
+}
+.videoOsdHeader button.headerCastButton {
+  display: none;
+}
+.iconOsd.volumeOsd {
+  display: none !important;
+}
+div.videoOsdVolumeControls-top {
+  display: none!important;
+}
+.videoOsd-belowtransportbuttons:not(.videoOsd-belowtransportbuttons-vertical) div.videoOsdVolumeSliderWrapper-bottom {
+  max-width: 10em!important;
+}
+.videoOsd-belowtransportbuttons:not(.videoOsd-belowtransportbuttons-vertical) div.videoOsdVolumeControls-bottom {
+  display: inline-flex !important;
+  justify-content: right!important;
+}
+.videoOsd-belowtransportbuttons:not(.videoOsd-belowtransportbuttons-vertical) .osdVolumeDisplayIcon {
+  font-size: 300%!important;
+}
+.videoOsd-belowtransportbuttons:not(.videoOsd-belowtransportbuttons-vertical) .osdVolumeDisplayIcon-left {
+  -webkit-margin-start: 0.7em!important;
+  margin-inline-start: 0.7em!important;
+}
+.videoOsd-belowtransportbuttons:not(.videoOsd-belowtransportbuttons-vertical) .osdVolumeDisplayIcon-right {
+  -webkit-margin-end: 0em!important;
+  margin-inline-end: 0em!important;
+}
+
+.videoosd-infotab {
+  margin: 0!important;
+}
+.videoosd-info-overview {
+  max-width: 1000px;
+  font-size: 18px;
+  line-height: 1.4;
+}
+.videoOsdBottom {
+  padding-top: 10px !important;
+  padding-left: min(5ch,1.5%) !important;
+  padding-right: min(5ch,1.5%) !important;
+}
+.videoOsdBottom, .videoosd-bottom-with-opentab {
+  padding-bottom: 10px!important;
+}
+.videoOsdText {
+  margin-bottom: 0 !important;
+}
+.videoOsdText.videoOsd-hideWithOpenTab.videoOsd-hideWhenLocked {
+  display: none!important;
+}
+.videoOsdBottom .emby-slider-background {
+  height: 15px;
+  margin-top: -3px;
+}
+.emby-slider-background.emby-slider-background-backdropfilter.videoOsdPositionSlider-large {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+.emby-slider-background-lower {
+  background-color: var(--theme-primary-color) !important;
+}
+.emby-slider::-webkit-slider-thumb {
+  background: var(--theme-primary-color) !important;
+  width: 1.1em !important;
+  height: 1.1em !important;
+}
+.videoOsdPositionText {
+  -webkit-order: 1!important;
+  order: 1!important;
+  -webkit-flex-basis: unset!important;
+  flex-basis: unset!important;
+  min-width: 60px!important;
+}
+.videoOsdBottom .videoOsdDurationText {
+  min-width: 65px !important;
+}
+.sliderContainer.videoOsdPositionSliderContainer.flex-grow.emby-slider-container {
+  -webkit-order: 2!important;
+  order: 2!important;
+  -webkit-flex-basis: unset!important;
+  flex-basis: unset!important;
+  margin: -3px 1.3% 0!important;
+  width: 10vw!important;
+}
+.videoOsdDurationText {
+  -webkit-order: 3!important;
+  order: 3!important;
+  -webkit-flex-basis: unset!important;
+  flex-basis: unset!important;
+  -webkit-flex-grow: unset!important;
+  flex-grow: unset!important;
+}
+.videoSubtitles {
+  transition: bottom 150ms ease-in-out!important;
+}
+.videoSubtitles div {
+  line-height: 1.2;
+}
+@supports (color:var(--fake-var)) {
+  @supports (height:calc(3.125em + 2 * max(3em,4em))) {
+    .videoSubtitles-autoposition {
+      bottom: 1%;
+    }
+  }
+}
+.videoOsdBottom .videoOsdSecondaryText-video {
+  display: none;
+  color: #fff;
+}
+.videoOsdBottom .videoOsdSecondaryText {
+  margin-left: 0 !important;
+}
+.videoOsdBottom h3.videoOsdParentTitle {
+  display: none;
+}
+.videoOsdBottom .paper-icon-button-light, 
+.videoOsdBottom .paper-icon-button-light:focus {
+  margin: 0 0.2em;
+  border-radius: 50% !important;
+}
+.videoOsdBottom .paper-icon-button-light:hover {
+  background: #ffffff30 !important;
+}
+.videoOsdBottom .videoosd-tabcontainers .videoosd-guidetab.tvguide .paper-icon-button-light.emby-scrollbuttons-scrollbutton:hover {
+  background: #fff !important;
+}
+.videoOsdBottom .videoOsdPositionText, 
+.videoOsdBottom .videoOsdDurationText {
+  font-weight: bold;
+  font-size: 1.3em;
+}
+span.osd-endsat {
+  display: none;
+}
+.videoOsdBottom .videoOsd-endsAtText {
+  display: none;
+  color: #fff;
+  font-weight: 500;
+}
+.videoOsdBottom h1.videoOsdParentTitle.videoOsdParentTitle-large.videoOsdParentTitle-larger, 
+.videoOsdBottom .flex.videoOsdSecondaryText.secondaryText.flex-wrap-wrap.videoOsdSecondaryText-withparentname {
+  display: none;
+}
+.videoOsdBottom-video {
+  -webkit-transition: opacity .1s ease-in-out !important;
+  -o-transition: opacity .1s ease-in-out !important;
+  transition: opacity .1s ease-in-out !important;
+  background: -webkit-gradient(linear, left top, left bottom, from(rgba(0, 0, 0, 0)), to(rgba(0 0 0 / 95%))) !important;
+  background: -webkit-linear-gradient(rgba(0, 0, 0, 0), rgb(0 0 0 / 95%)) !important;
+  background: -o-linear-gradient(rgba(0, 0, 0, 0), rgb(0 0 0 / 95%)) !important;
+  background: linear-gradient(rgba(0, 0, 0, 0), rgb(0 0 0 / 95%)) !important;
+}
+
+/* OSD Button Ordering */
+.videoOsdBottom-tabs {
+  -webkit-order: 1!important;
+  order: 1!important;
+}
+.videoosd-tabcontainers {
+  -webkit-order: 1!important;
+  order: 1!important;
+}
+.videoOsdBottom .videoOsdBottom-buttons-topright {
+  position: absolute;
+  right: 0;
+  bottom: 50px;
+}
+.videoOsdBottom .videoOsdBottom-buttons {
+  order: 0;
+}
+.videoOsdBottom .videoOsd-belowtransportbuttons {
+  order: 1;
+}
+.videoOsdBottom .videoOsdPositionContainer {
+  order: 3;
+  margin-bottom: 20px;
+}
+
+.flex-direction-column.videoOsdText.videoOsdText-customFont:not(.videoOsdText-remotecontrol) {
+  -webkit-box-orient: unset !important;
+  -webkit-box-direction: unset !important;
+  -webkit-flex-direction: unset !important;
+  flex-direction: unset !important;
+}
+.videoOsdSecondaryText {
+  line-height: 2.5;
+  margin-left: 20px;
+  -webkit-box-align: unset !important;
+  -webkit-align-items: unset !important;
+  align-items: unset !important;
+}
+.videoOsdTitle {
+  line-height: 2.3;
+}
+.videoosd-bottom-with-opentab div.videoOsd-hideWithOpenTab.videoOsdBottom-buttons-topright, 
+.videoosd-bottom-with-opentab div.videoOsd-hideWithOpenTab.videoOsdBottom-buttons,
+.videoosd-bottom-with-opentab .videoOsd-hideWithOpenTab {
+  display: flex!important;
+}
+.osdinfo-overview-text {
+  overflow-y: auto;
+  max-height: 250px;
+}
+.videoOsdBottom-buttons.flex.align-items-center.flex-direction-row.focuscontainer-x.focusable.videoOsd-customFont.videoOsdBottom-buttons-remotecontrol.videoOsd-customFont-remotecontrol {
+  display: inline-block !important;
+  text-align: center !important;
+  width: auto !important;
+}
+.videoOsdBottom-contentbuttons.flex.align-items-center.justify-content-center.flex-direction-row.focuscontainer-x.focusable.videoOsd-customFont.videoOsd-customFont-remotecontrol {
+  display: inline-block !important;
+  text-align: center !important;
+}
+.videoOsdBottom-buttons.flex.align-items-center.flex-direction-row.focuscontainer-x.focusable.videoOsd-customFont.videoOsdBottom-buttons-remotecontrol.videoOsd-customFont-remotecontrol .flex.flex-direction-row.flex-grow.align-items-center.flex-shrink-zero {
+  display: inline-block !important;
+  text-align: center !important;
+}
+.videoOsdBottom-buttons.flex.align-items-center.flex-direction-row.focuscontainer-x.focusable.videoOsd-customFont.videoOsdBottom-buttons-remotecontrol.videoOsd-customFont-remotecontrol .flex.flex-shrink-zero.justify-content-flex-end.flex-wrap-wrap.videoOsdBottom-buttons-right.videoOsdBottom-buttons-right-remotecontrol .videoOsdVolumeControls.flex.flex-direction-row.align-items-center.hide-mouse-idle-tv {
+  float: right;
+  margin: 10px 0;
+}
+.videoOsdBottom-buttons.flex.align-items-center.flex-direction-row.focuscontainer-x.focusable.videoOsd-customFont.videoOsdBottom-buttons-remotecontrol.videoOsd-customFont-remotecontrol .flex.flex-shrink-zero.justify-content-flex-end.flex-wrap-wrap.videoOsdBottom-buttons-right.videoOsdBottom-buttons-right-remotecontrol {
+  display: inline-block !important;
+  text-align: center !important;
+  vertical-align: bottom !important;
+  width: auto !important;
+}
+.videoOsdBottom-remotecontrol .listItemOverlayButton-imagehover {
+  background: none !important;
+}
+.videoOsdBottom-remotecontrol .listItem-hoverable:hover, 
+.videoOsdBottom-remotecontrol .listItem-hoverable:hover .chkListItemSelectContainer {
+  border-color: transparent!important;
+}
+
+/* Audio Player Layouts */
+.skinHeader.focuscontainer-x.headroom.videoOsdHeader.semiTransparent.videoosd-header-safe {
+  max-width: 100px!important;
+  max-height: 100px!important;
+  bottom: unset!important;
+  top: 0!important;
+}
+.videoosd-header-safe.videoOsdHeader.skinHeader.semiTransparent {
+  width: 200px!important;
+  margin: 0!important;
+  top: 20px!important;
+  bottom: unset!important;
+  left: 0px!important;
+  max-width: unset!important;
+  padding: 0!important;
+}
+.videoOsdBottom-remotecontrol.videoOsdBottom .videoOsdBottom-contentbuttons {
+  order: 1!important;
+  margin-bottom: 20px;
+}
+.videoOsdBottom-remotecontrol.videoOsdBottom .osdPosterContainer {
+  order: 2!important;
+}
+.videoOsdBottom-remotecontrol.videoOsdBottom .videoOsdBottom-buttons {
+  order: 3!important;
+}
+.videoOsdBottom-remotecontrol.videoOsdBottom .videoOsdVolumeControls {
+  order: 4!important;
+}
+.videoOsdBottom-remotecontrol.videoOsdBottom .videoOsdPositionContainer {
+  order: 5!important;
+}
+.playlistIndexIndicatorImage:not(.playlistIndexIndicatorImage-paused)::after {
+  top: 25%!important;
+  bottom: 25%!important;
+  max-width: 64px;
+  max-height: 64px;
+  margin: 0 auto;
+}
+.videoOsd-audioInfo {
+  -webkit-order: 0!important;
+  order: 5!important;
+  -webkit-flex-basis: 100%!important;
+  flex-basis: 100%!important;
+  margin-top: 20px;
+}
+.flex.flex-shrink-zero.justify-content-flex-end.flex-wrap-wrap.videoOsdBottom-buttons-topright.videoOsd-hideWithOpenTab.videoOsd-hideWhenLocked.focuscontainer-x.focusable.videoOsd-customFont-x2.videoOsd-customFont-remotecontrol.videoOsd-customFont-remotecontrol-buttons.videoOsdBottom-buttons-topright-remotecontrol {
+  position: unset;
+}
+
+/* Video OSD Tabs - FIX für Emby 4.9+ */
+.videoOsdBottom-tabs {
+  -webkit-order: 1!important;
+  order: 1!important;
+}
+.videoosd-tabcontainers {
+  -webkit-order: 1!important;
+  order: 1!important;
+}
+.videoosd-tabcontainers.flex.videoosd-tabcontainers-hidden {
+  height: 0 !important;
+}
+
+/* FIX: OSD visible when info or chapter is toggled */
+.videoOsd-belowtransportbuttons.flex.focusable.focuscontainer-x.videoOsd-hideWithOpenTab, 
+.videoosd-bottom-with-opentab .flex.flex-direction-row.align-items-center.flex-shrink-zero.videoosd-transportbuttons, 
+.videoosd-bottom-with-opentab .flex.flex-shrink-zero.justify-content-flex-end.flex-wrap-wrap.videoOsdBottom-buttons-right, 
+.videoosd-bottom-with-opentab .flex.flex-direction-row.align-items-center.justify-content-center.videoOsdPositionContainer.focuscontainer-x {
+  display: flex !important;
+}
+.videoosd-bottom-with-opentab .videoOsd-hideWithOpenTab {
+  display: none !important;
+}
+
+.videoOsdBottom.flex.videoOsdBottom-remotecontrolcontentvisible.videoOsdBottom-video, 
+.videoOsdBottom.flex.videoOsdBottom-remotecontrolcontentvisible.videoOsdBottom-video.videoosd-bottom-with-opentab {
+  padding: 1.25em calc(min(5ch, 2%) + env(safe-area-inset-right, 0)) calc(min(0.25em, 1vh) + env(safe-area-inset-bottom, 0)) calc(min(1ch, 2%) + env(safe-area-inset-left, 0)) !important;
+  background: linear-gradient(rgba(0, 0, 0, 0), rgba(0, 0, 0, .8)) !important;
+}
+
+.videoosd-tabBackground-backdropfilter, .videoosd-tab {
+  background: rgb(0 0 0 / 15%) !important;
+  -webkit-backdrop-filter: blur(4em) saturate(1) !important;
+  backdrop-filter: blur(4em) saturate(1) !important;
+}
+.videoosd-tab-button {
+  -webkit-box-shadow: 0px 0px 10px 0px rgb(0 0 0 / 50%) !important;
+  -moz-box-shadow: 0px 0px 10px 0px rgb(0 0 0 / 50%) !important;
+  box-shadow: 0px 0px 10px 0px rgb(0 0 0 / 50%) !important;
+  -webkit-backdrop-filter: blur(0.5em) saturate(0.5) !important;
+  backdrop-filter: blur(0.5em) saturate(0.5) !important;
+  font-size: 1.2em !important;
+  text-shadow: 2px 2px 15px #333;
+  padding: 13px 30px !important;
+  transition: background 0.5s !important;
+  border: 2px solid transparent;
+  margin: 10px 7px 10px 7px;
+}
+.videoosd-tab-button:hover {
+  background: #ffffff70 !important;
+  color: #fff !important;
+}
+.videoosd-tab-button.emby-tab-button-active {
+  background: #ffffff70 !important;
+  color: #fff !important;
+}
+.emby-tab-button.videoosd-tab-button, 
+.videoosd-bottom-with-opentab .videoosd-tab-button {
+  background: transparent;
+  color: #fff !important;
+  border: 2px solid #ffffff80;
+  text-decoration: none!important;
+  padding: 13px 30px !important;
+  margin: 0 5px!important;
+  overflow: hidden;
+}
+.videoosd-bottom-with-opentab .videoosd-tab-button.emby-tab-button-active {
+  background: #fff;
+  color: #fff !important;
+  border: 2px solid transparent;
+  text-decoration: none!important;
+  overflow: hidden!important;
+}
+.videoosd-guidetab .programCellInner {
+  background: rgb(255 255 255 / 20%) !important;
+}
+.videoosd-tab .cardBox .cardImage {
+  background: rgb(51 51 51 / 50%);
+}
+.videoosd-tabcontainers .videoosd-tab .cardOverlayContainer {
+  -webkit-box-shadow: 0px 0px 45px 5px rgb(255 255 255 / 15%);
+  -moz-box-shadow: 0px 0px 45px 5px rgba(255, 255, 255, 0.15);
+  box-shadow: 0px 0px 45px 5px rgb(255 255 255 / 15%);
+}
+.view-videoosd-videoosd .cardImage {
+  object-fit: cover;
+}
+.videoosd-tab .epgVirtualScrollerScrollContainer-both .epgRow .guideChannelImage-condensed {
+  width: 100% !important;
+  height: 100% !important;
+  background-position: center center !important;
+}
+.videoosd-poster.justify-content-center {
+  -webkit-box-pack: start !important;
+  -webkit-justify-content: flex-start !important;
+  justify-content: flex-start !important;
+}
+.videoosd-tabcontainers .videoosd-poster {
+  -webkit-margin-end: 2.25em;
+  margin-inline-end: 2.25em;
+}
+.videoosd-tab {
+  padding: 30px !important;
+  display: flex;
+  align-items: center;
+}
+.videoosd-tab .scrollX {
+  width: 100%;
+}
+.videoosd-tab .backdropCard-horiz {
+  width: 20vw !important;
+}
+.videoosd-tab .scrollbuttoncontainer {
+  bottom: 22%;
+}
+.videoosd-tabcontainers .cardOverlayButton-br {
+  right: 30px;
+}
+
+/* Skip Intro */
+@supports (color:var(--fake-var)) {
+  @supports (height:calc(3.125em + 2 * max(3em,4em))) {
+    .upNextContainer, .skipIntroContainer {
+      bottom: max(min(3em, 38vh), calc(var(--osd-height))* 1.1)!important;
+    }
+  }
+}
+.btnSkipIntro {
+  -webkit-box-shadow: 0px 0px 15px 0px rgb(0 0 0 / 70%) !important;
+  -moz-box-shadow: 0px 0px 15px 0px rgb(0 0 0 / 70%) !important;
+  box-shadow: 0px 0px 15px 0px rgb(0 0 0 / 70%) !important;
+  -webkit-backdrop-filter: blur(0.5em) saturate(0.5) !important;
+  backdrop-filter: blur(0.5em) saturate(0.5) !important;
+  background: #ffffff30 !important;
+  font-size: 1.2em !important;
+  padding: 13px 30px !important;
+  transition: all 0.3s ease;
+  bottom: -15px !important;
+}
+.btnSkipIntro:hover {
+  background: #ffffff70 !important;
+}
+.videoOsdBottom-tabs .btnCloseTabContent.hide {
+  display: block !important;
+  opacity: 0 !important;
+}
+.mouseIdle .btnSkipIntro {
+  -moz-animation: cssAnimation 1s ease-in 0.1s forwards;
+  -webkit-animation: cssAnimation 1s ease-in 0.1s forwards;
+  -o-animation: cssAnimation 1s ease-in 0.1s forwards;
+  animation: cssAnimation 1s ease-in 0.1s forwards;
+  -webkit-animation-fill-mode: forwards;
+  animation-fill-mode: forwards;
+  animation-delay: 1.5s;
+  bottom: -15vh !important;
+}
+@keyframes cssAnimation {
+  to { opacity: 0; }
+}
+@-webkit-keyframes cssAnimation {
+  to { opacity: 0; }
+}
+
+/* Up Next */
+.upNextContainer {
+  bottom: min(2.5em,38vh)!important;
+}
+
+.mouseIdle .upNextDialog-poster, 
+.mouseIdle h3.upNextDialog-title, 
+.mouseIdle .btnHide.upNextDialog-button {
+  display: none !important;
+}
+
+.mouseIdle .upNextContainer.upNextDialog {
+  background: transparent !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+.upNextContainer.upNextDialog {
+  max-width: 95%;
+  margin: 0px auto;
+  padding: 25px;
+  border-radius: 30px;
+  -webkit-backdrop-filter: saturate(1.5) blur(4em) !important;
+  backdrop-filter: saturate(1.5) blur(4em) !important;
+  box-shadow: 0px 5px 57px 35px rgb(0 0 0 / 70%)
+}
+
+.upNextDialog-buttons .btnStartNow, 
+.upNextDialog-buttons .btnHide {
+  display: inline-block;
+  padding: 15px 40px;
+  text-transform: uppercase;
+  background: #333;
+  font-size: 1.1em;
+  margin-top: 10px;
+  margin: 5px;
+  width: 50%;
+  box-shadow: 5px 15px 37px -5px rgb(0 0 0 / 70%);
+}
+
+.upNextDialog-buttons .btnStartNow {
+  background: var(--theme-primary-color) !important;
+}
+
+img.upNextDialog-poster-img {
+  height: 100%;
+  width: auto;
+  max-height: 55px;
+  border-radius: 5px;
+  position: unset;
+}
+
+.upNextDialog-poster {
+  margin-right: 2em !important;
+  width: auto !important;
+  display: none;
+}
+
+.upNextContainer .upNextDialog-mediainfo {
+  display: none;
+}
+
+.upNextContainer .upNextDialog-overview {
+  display: none;
+}
+
+.upNextDialog-countdownText {
+  font-size: 30px !important;
+  line-height: 1.5 !important;
+  position: absolute;
+  right: 40px;
+  font-weight: 100 !important;
+  color: var(--theme-primary-color) !important;
+  overflow: hidden;
+  width: 40px;
+  height: 40px;
+}
+
+h3.upNextDialog-title {
+  font-size: 2em;
+  font-weight: 100;
+  margin: 0 !important;
+  margin-right: 2em !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  height: 50px;
+  width: 55%;
+  display: inline-block !important;
+}
+
+h2.upNextDialog-nextVideoText {
+  float: left;
+  font-size: 0;
+  margin: -10px 0 0 0 !important;
+  font-weight: 100;
+  opacity: 0.7;
+}
+
+/* Live TV */
+.epgRow .channelCellInner {
+  border-radius: 0 !important;
+  background: rgb(255 255 255 / 5%) !important;
+}
+
+.guideChannelImage-withtext {
+  margin: 0 auto;
+}
+
+.guideChannelImage+.guideChannelText {
+  -webkit-flex-grow: 0;
+  flex-grow: 0;
+}
+
+.videoosd-guidetab .firstChannelCell-withscroll {
+  background: transparent !important;
+}
+
+.epgRow .channelPrograms .programCellInner {
+  background: rgb(255 255 255 / 10%);
+}
+
+img.recordingDialog-img {
+  box-shadow: 5px 5px 17px -5px rgb(0 0 0 / 50%);
+  border-radius: 5px;
+}
+
+.recordingDialog p.itemOverview {
+  font-size: 14px;
+}
+
+.tvguide .btnLiveGuide {
+  right: 4em !important;
+  top: 51% !important;
+  opacity: 0.95;
+}
+
+.tvguide button.emby-scrollbuttons-scrollbutton.md-icon.paper-icon-button-light {
+  margin: 10px !important;
+}
+
+.guide-currentTimeIndicatorDot {
+  color: var(--theme-primary-color) !important;
+}
+
+.topDetailsMain .cardImageContainer.cardContent-round {
+  border-radius: 5px !important;
+}
+
+/* ===== MEDIA QUERIES ===== */
+
+@media (max-width: 800px) {
+  .appfooter {
+    -webkit-backdrop-filter: saturate(1.5) blur(4em);
+    backdrop-filter: saturate(1.5) blur(4em);
+  }
+}
+
+@media (max-width: 902px) {
+  .osdPlayQueue-autosmall {
+    margin-top: 70px;
+  }
+}
+
+@media (max-width: 799px) {
+  .backdropContainer-withfulldrawer, .skinBody-withFullDrawer .page {
+    left: 0% !important;
+  }
+}
+
+@media (max-width: 1279px) {
+  .backdropContainer-withfulldrawer, .skinBody-withFullDrawer .page {
+    left: 10% !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .detailButtons .btnPlaystate[data-played="true"] {
+    background: rgb(255 255 255 /5%) !important;
+    border-radius: 10px!important;
+  }
+  .detailButtons .btnPlaystate[data-played="true"] i.playstatebutton-icon, 
+  .detailButtons .btnPlaystate[data-played="false"] i.playstatebutton-icon:not(.playstatebutton-icon-played):hover, 
+  .detailButtons .btnPlaystate[data-played="false"]:hover i.playstatebutton-icon:not(.playstatebutton-icon-played) {
+    color: #fff !important;
+  }
+  .verticalSection.seriesItemsSection .itemsContainer:not(.allEpisodesItemsContainer) {
+    width: 100% !important;
+  }
+}
+
+@media (min-width: 40em) {
+  .skinBody-withFullDrawer .page-windowScroll.withTabs, 
+  .skinBody-withFullDrawer .withTabs .padded-top-page,
+  .page-windowScroll.withTabs, 
+  html:not(.layout-tv) .withTabs .padded-top-page {
+    padding-top: calc(6em + (var(--window-inset-top) * .7)) !important;
+  }
+}
+
+@media (min-width: 48em) {
+  .skinBody-withFullDrawer .padded-left-page.settingsContainer {
+    padding-left: 4%;
+  }
+}
+
+@media (min-width: 50em) {
+  .itemBackgroundContainer.withBackdrop:not(.backgroundContainer-transparent), 
+  .backgroundContainer.withBackdrop:not(.backgroundContainer-transparent) {
+    background: linear-gradient(77deg, rgba(8, 1, 18, 1) 0, rgba(8, 1, 18, 0.9) 48%, rgba(8, 1, 18, 0.8) 100%) !important;
+  }
+  
+  button.detailButton {
+    background: rgb(255 255 255 / 30%) !important;
+  }
+  
+  .itemPrimaryNameContainer-logo {
+    margin-bottom: 1em !important;
+  }
+  
+  .topDetailsContainer .verticalFieldItem.trackSelections,
+  .topDetailsContainer .verticalFieldItem.tagline,
+  .topDetailsContainer .verticalFieldItem.overview-container,
+  .topDetailsContainer .verticalFieldItem.directors {
+    max-width: 48% !important;
+    width: 48% !important;
+  }
+  
+  .topDetailsContainer .verticalFieldItem.trackSelections {
+    max-width: 20vw !important;
+    min-width: 400px !important;
+    float: inherit !important;
+    margin-top: 0 !important;
+  }
+  
+  div.verticalSection.audioVideoMediaInfo {
+    -webkit-backdrop-filter: saturate(1) blur(3em);
+    backdrop-filter: saturate(1) blur(3em);
+    border-radius: 10px;
+  }
+  
+  div.verticalSection.audioVideoMediaInfo .cardContent {
+    background-color: rgb(0 0 0 / 15%) !important;
+  }
+  
+  @media (min-width: 50em) {
+  .videoOsd-customFont {
+    font-size: 1.8em !important;
+  }
+  
+  .scrollSlider.itemsContainer.videoosd-padded-left.videoosd-padded-right.scrollX.hiddenScrollX.scrollSliderX.emby-scrollbuttons-scrollSlider.virtualItemsContainer {
+    margin-top: 1%;
+  }
+  
+  .videoosd-bottom-with-opentab .videoOsdBottom-tabs {
+    -webkit-transition: opacity .1s ease-in-out !important;
+    -o-transition: opacity .1s ease-in-out !important;
+    transition: opacity .1s ease-in-out !important;
+    width: 100% !important;
+    justify-content: flex-end !important;
+  }
+  
+  .videoOsdBottom {
+    min-height: 150px;
+  }
+  
+  .videoOsdBottom .sliderBubble {
+    top: 10px;
+    background: #ffffff;
+    color: #333;
+    border-radius: 5px;
+    z-index: 2 !important;
+    padding: 0 !important;
+  }
+  
+  .videoOsdBottom .videoOsdVolumeSliderWrapper .sliderBubble {
+    top: -5px;
+    background: #ffffff !important;
+    color: #333 !important;
+    border-radius: 5px;
+    z-index: 2 !important;
+    box-shadow: none;
+    height: auto !important;
+    width: auto !important;
+    padding: 10px;
+  }
+  
+  .videoOsdBottom .sliderBubbleText {
+    font-size: 1em;
+    padding: .3em .55em;
+    border-radius: 5px;
+    background: #fff;
+  }
+  
+  .emby-slider-thumb {
+    font-size: 15px;
+  }
+  
+  .emby-slider-thumb-hoveronly {
+    -webkit-transform: scale(1.5)!important;
+    transform: scale(1.5)!important;
+  }
+  
+  .emby-slider:focus-visible + div + .emby-slider-thumb, 
+  .emby-slider:hover + div + .emby-slider-thumb {
+    -webkit-transform: scale(1.8) !important;
+    transform: scale(1.8) !important;
+  }
+  
+  .sliderBubble.dialog.chapterThumbImageContainer {
+    filter: brightness(1.1);
+    box-shadow: rgb(0 0 0 / 70%) 0px 5px 30px 5px !important;
+    height: 170px !important;
+    width: auto !important;
+    background-size: 135% !important;
+    background-repeat: no-repeat !important;
+    background-position: center bottom !important;
+    background-color: #111 !important;
+    border-radius: 5px !important;
+    border: 0px !important;
+    overflow: hidden;
+  }
+  
+  .chapterThumbTextContainer .chapterThumbText:first-child {
+    display: none;
+  }
+  
+  .chapterThumbTextContainer {
+    background: #bfbfbf75 !important;
+    color: #fff !important;
+    width: 100% !important;
+    border-radius: 10px !important;
+    -webkit-backdrop-filter: saturate(1.5) blur(4em) !important;
+    backdrop-filter: saturate(1.5) blur(2em) !important;
+    box-sizing: border-box;
+    padding: 0.5em 0.7em;
+    font-weight: normal !important;
+    font-size: 1.3em !important;
+  }
+  
+  .videoOsdVolumeControls-showhover > .videoOsdVolumeSliderWrapper {
+    background: rgba(56, 56, 56, .76) !important;
+    -webkit-backdrop-filter: blur(4em) saturate(1.8) !important;
+    backdrop-filter: blur(4em) saturate(1.8) !important;
+    -webkit-box-shadow: 0px 0px 50px 0px rgb(0 0 0 / 90%) !important;
+    -moz-box-shadow: 0px 0px 50px 0px rgba(0, 0, 0, 0.9) !important;
+    box-shadow: 0px 0px 50px 0px rgb(0 0 0 / 90%) !important;
+  }
+  
+  .videoOsdHeader .pageTitle {
+    max-width: 300px;
+    min-width: 300px;
+    width: 100% !important;
+    margin-left: 0.2em !important;
+  }
+  
+  .videoOsdHeader .pageTitle, 
+  .videoOsdHeader.skinHeader.semiTransparent {
+    min-height: 80px!important;
+    height: 80px!important;
+  }
+  
+  .skinHeader.focuscontainer-x.headroom.videoOsdHeader.semiTransparent:not(.videoOsdHeader-remotecontrol) {
+    position: fixed;
+    top: unset !important;
+    width: -moz-available;
+    width: -webkit-fill-available;
+    margin-bottom: 25px;
+    max-height: 100px;
+    max-width: 50%;
+  }
+  
+  .videoOsdHeader .headerLeft {
+    width: 100%;
+    max-width: 100%;
+    min-height: auto!important;
+    min-width: 100px;
+  }
+  
+  .videoOsdHeader .headerLeft, 
+  .videoOsdHeader .headerRight, 
+  .videoOsdHeader .headerMiddle {
+    height: auto!important;
+  }
+  
+  .videoOsdHeader.skinHeader.semiTransparent {
+    background: unset !important;
+  }
+}
+
+@media (orientation: landscape) and (min-height: 30em) and (min-width: 60em) {
+  .videoOsdBottom-tabs {
+    margin-left: 0 !important;
+    padding-top: 0.5em !important;
+    padding-bottom: 1.5em !important;
+  }
+}
+  
+  .skinHeader-withfulldrawer {
+    padding: 1em 5em 1em 10em !important;
+    background-color: transparent !important;
+  }
+  
+  .homeSectionsContainer h2.sectionTitle-cards {
+    font-size: 1.5em;
+    font-weight: 600;
+    color: #dfdfdf;
+    margin-top: 0.4em !important;
+    margin-bottom: 0.3em !important;
+    margin-left: 10px !important;
+  }
+  
+  .skinHeader-withfulldrawer .headerTop-withSectionTabs {
+    padding-bottom: 1.2em;
+  }
+  
+  .backdropContainer-withfulldrawer, .skinBody-withFullDrawer {
+    left: 0 !important;
+  }
+  
+  .skinBody-withFullDrawer .withTabs.page, 
+  .skinBody-withFullDrawer .page {
+    padding-left: 0% !important;
+  }
+  
+  /*.mainDrawer.drawer-docked.mainDrawer-mini {
+    width: 7em;
+  }*/
+  
+  .mainDrawer.drawer-docked.mainDrawer-mini .navDrawerItemsContainer[data-listindex="0"] {
+    margin-top: 60px;
+  }
+  
+  .mainDrawer.drawer-open, 
+  .mainDrawer.drawer-docked,
+  .mainDrawer.drawer-flyout {
+    width: 5.5em;
+    padding: 1em 1.1em 1em;
+    transition-delay: 0s;
+    transition: 0.2s;
+    z-index: 9999 !important;
+    -webkit-backdrop-filter: saturate(1) blur(20px) !important;
+    backdrop-filter: saturate(1) blur(20px) !important;
+    background-color: transparent !important;
+    box-shadow: 0px 5px 25px 5px rgba(0,0,0,0.34) !important;
+    border-right: 0.08em solid rgba(255, 255, 255, .08);
+  }
+  
+  .mainDrawer.drawer-docked.drawer-open:not(.mainDrawer-mini) {
+    transition-delay: 0s;
+  }
+  
+  .mainDrawer:not(.mainDrawer-mini):hover,
+  .mainDrawer.drawer-flyout,
+  .mainDrawer:not(.drawer-docked).focuscontainer-y.emby-scroller.scrollY.scrollFrameY.hiddenScrollY-hover.scrollY-mini.drawer-open {
+    width: 15em;
+  }
+  
+  .mainDrawer:not(.mainDrawer-mini) .navDrawerLogo,
+  .mainDrawer.drawer-flyout .navDrawerLogo {
+    display: none;
+  }
+  
+  .mainDrawer:not(.mainDrawer-mini) .navDrawerHeader,
+  .mainDrawer.drawer-flyout .navDrawerHeader {
+    margin: 0em 0 0.5em 0.3em;
+    display: inline-flex;
+  }
+  
+  .mainDrawer.drawer-docked:not(.mainDrawer-mini) .emby-collapsible-title {
+    transition: opacity 0.2s 0.7s ease;
+    opacity: 0;
+    font-size: 0;
+    line-height: 15px;
+    transition: 0.1s;
+    transition-delay: 0s;
+    width: 100%;
+    border-top: 1px solid rgb(255 255 255 / 15%);
+  }
+  
+  .mainDrawer.drawer-docked:not(.mainDrawer-mini):hover .emby-collapsible-title,
+  .mainDrawer.drawer-docked:not(.mainDrawer-mini) .emby-collapsible-title[title="Playlists"],
+  .mainDrawer.drawer-docked:not(.mainDrawer-mini) .emby-collapsible-title[title="Collections"] {
+    border-top: 1px solid transparent;
+  }
+  
+  .mainDrawer.drawer-docked:not(.mainDrawer-mini).hiddenScrollY-hover:not(:hover), 
+  .mainDrawer.drawer-docked:not(.mainDrawer-mini).scrollY:not(:hover) {
+    scrollbar-width: none;
+  }
+  
+  .navDrawerListItemBody {
+    -webkit-padding-start: 1em !important;
+    padding-inline-start: 1em !important;
+  }
+  
+  .mainDrawer .emby-collapsible-title, 
+  .mainDrawer.drawer-docked:not(.mainDrawer-mini):hover .emby-collapsible-title {
+    opacity: 1;
+    display: block;
+    font-size: 1em;
+    color: white;
+    font-weight: 900;
+  }
+  
+  .mainDrawer.drawer-docked:not(.mainDrawer-mini) button.navMenuOption .navDrawerListItemBody {
+    transition: opacity 0.1s 0.5s ease;
+    opacity: 0;
+    font-size: 0;
+    transition: 0.1s;
+    transition-delay: 0s;
+  }
+  
+  .mainDrawer button.navMenuOption .navDrawerListItemBody, 
+  .mainDrawer.drawer-docked:not(.mainDrawer-mini):hover button.navMenuOption .navDrawerListItemBody {
+    opacity: 1;
+    font-size: 1em;
+  }
+  
+  .mainDrawer.drawer-docked:not(.mainDrawer-mini) div[data-listtype="playlists"] button.navMenuOption .navDrawerListItemBody {
+    transition: 0s;
+  }
+  
+  .mainDrawer.drawer-docked:not(.mainDrawer-mini) button.btnPinNavDrawer i {
+    transition: opacity 0.2s 0.7s ease;
+    opacity: 0;
+    font-size: 0;
+    transition: 0.2s;
+    transition-delay: 0s;
+  }
+  
+  .mainDrawer button.btnPinNavDrawer i, 
+  .mainDrawer.drawer-docked:not(.mainDrawer-mini):hover button.btnPinNavDrawer i {
+    opacity: 1;
+    font-size: 1.5em;
+  }
+  
+  .mainDrawer.drawer-docked:not(.mainDrawer-mini) button.navDrawerCollapseButton i {
+    transition: opacity 0.2s 0.7s ease;
+    opacity: 0;
+    font-size: 0;
+    transition: 0.2s;
+    transition-delay: 0s;
+  }
+  
+  .mainDrawer button.navDrawerCollapseButton i, 
+  .mainDrawer.drawer-docked:not(.mainDrawer-mini):hover button.navDrawerCollapseButton i {
+    opacity: 1;
+    font-size: 1.5em;
+    width: 16px;
+    height: 16px;
+    top: -5px;
+  }
+  
+  .mainDrawer.drawer-docked:not(.mainDrawer-mini) div[data-listtype="playlists"],
+  .mainDrawer.drawer-docked:not(.mainDrawer-mini) div[data-listtype="collections"] {
+    transition: opacity 0.2s 0.7s ease;
+    opacity: 0;
+    font-size: 0;
+    transition: 0.2s;
+    transition-delay: 0s;
+  }
+  
+  .mainDrawer.drawer-docked:not(.mainDrawer-mini):hover div[data-listtype="playlists"],
+  .mainDrawer.drawer-docked:not(.mainDrawer-mini):hover div[data-listtype="collections"] {
+    opacity: 1;
+    font-size: 1em;
+  }
+  
+  .mainDrawer:not(.mainDrawer-mini) .emby-collapsible-button-collapsed,
+  .mainDrawer.drawer-flyout .emby-collapsible-button-collapsed {
+    border-width: 0 !important;
+  }
+  
+  .focuscontainer.dialog.dialog-fixedSize.dialog-fullscreen-border.formDialog.opened {
+    max-width: 90% !important;
+    margin: 0 auto !important;
+    padding: 20px !important;
+    box-sizing: border-box !important;
+  }
+  
+  .dialog {
+    padding: 20px !important;
+  }
+  
+  .dialogContentInner.padded-left.padded-right {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    max-width: 99%;
+  }
+  
+  .mainDrawer.drawer-docked.drawer-open:not(.mainDrawer-mini) .navDrawerSearchFieldContainer .emby-input {
+    background: transparent!important;
+  }
+  
+  .mainDrawer.drawer-docked.drawer-open:not(.mainDrawer-mini):hover .navDrawerSearchFieldContainer .emby-input {
+    background-color: rgb(0 0 0 / 30%) !important;
+    transition: opacity 0.2s 0.7s ease;
+    transition: 0.2s;
+    transition-delay: 0s;
+    padding: 0 10px 0 50px !important;
+  }
+}
+
+@media (min-width: 60em) {
+  .page-withFullDrawer {
+    left: 0!important;
+    inset-inline-start: 0!important;
+    margin-left: 7rem !important;
+  }
+  
+  .osdIconButton {
+    font-size: 1.7em!important;
+    margin-bottom: 0px!important;
+  }
+}
+
+@media not all and (min-width: 66em) {
+  .headerMiddle-withSectionTabs:not(.headerMiddle-tv) {
+    margin-top: 0;
+    height: 2.5em;
+    position: absolute;
+    top: 23px;
+    left: 0;
+    right: 0;
+  }
+}
+
+@media (orientation: landscape) and (min-width: 60em) {
+  .guideContainer {
+    padding-left: 0 !important;
+  }
+}
+
+@media (orientation: landscape) and (min-height: 30em) and (min-width: 60em) {
+  .videoOsdBottom-tabs {
+    margin-left: 0 !important;
+    padding-top: 30px !important;
+    padding-bottom: 0.5em !important;
+  }
+}
+
+@media (orientation: portrait) and (pointer: coarse) and (min-height: 20em) {
+  .videoOsdBottom-buttons .videoOsd-centerButtons-autolayout {
+    top: -20% !important;
+  }
+}
+
+@media (orientation: landscape) and (pointer: coarse) and (min-height: 20em) {
+  .videoOsdBottom-buttons .videoOsd-centerButtons-autolayout {
+    top: unset !important;
+    margin-top: 0 !important;
+    font-size: inherit !important;
+    width: 50% !important;
+    left: 10% !important;
+  }
+}
+
+@media (min-width: 70em) {
+  .details-largefont .detailButtons {
+    font-size: 108%;
+    -webkit-align-items: center;
+    align-items: center;
+    margin-top: 25px !important;
+  }
+}
+
+@media (min-width: 80em) {
+  .backdropContainer-withfulldrawer, .skinBody-withFullDrawer .page {
+    left: 0 !important;
+  }
+  
+  .skinBody-withFullDrawer .padded-left {
+    padding-left: 0 !important;
+    margin-left: 0!important;
+  }
+  
+  .skinBody-withFullDrawer .withTabs.page, 
+  .skinBody-withFullDrawer .page {
+    padding-left: 10rem !important;
+  }
+  
+  .headerMiddle.sectionTabs.headerMiddle-withSectionTabs {
+    position: absolute;
+    top: 13px;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 60%;
+  }
+}
+
+@media (pointer: fine) and (min-width: 80em) {
+  .navDrawerCollapseIcon {
+    left: 7.2em !important;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .chkListItemSelectContainer {
+    left: -4em !important;
+  }
+}
+
+@media (min-width: 100em) {
+  .formDialogContent .portraitCard, 
+  .formDialogContent .smallBackdropCard, 
+  .formDialogContent .squareCard {
+    width: 14.32%;
+  }
+}
+
+@media (min-width: 115em) {
+  .listItemMediaInfo.listItemBodyText.listItemBodyText-secondary.listItemBodyText-nowrap {
+    color: #ffffff4a;
+    margin: 10px 0;
+  }
+  
+  .listItemImageContainer-large {
+    height: 6vw;
+  }
+  
+  .verticalSection.moreFromSeasonSection .virtualScrollItem.card {
+    max-width: 200px;
+  }
+  
+  .verticalSection.seriesItemsSection .portraitCard, 
+  .verticalSection.seriesItemsSection .squareCard {
+    min-width: 140px;
+  }
+  
+  .focuscontainer.dialog.dialog-fixedSize.dialog-fullscreen-border.formDialog.opened .portraitCard, 
+  .focuscontainer.dialog.dialog-fixedSize.dialog-fullscreen-border.formDialog.opened .squareCard {
+    width: 20%;
+  }
+}
+
+@media (min-width: 120em) {
+  .backdropCard-horiz {
+    width: 12.33333333333333vw !important;
+  }
+  
+  .headerRight {
+    -webkit-flex-shrink: inherit !important;
+    flex-shrink: inherit !important;
+    -webkit-box-flex: inherit !important;
+    -webkit-flex-grow: inherit !important;
+    flex-grow: inherit !important;
+  }
+}
+
+@media (min-width: 1500px) {
+  .upNextContainer div.flex.flex-direction-column.flex-grow {
+    width: 100%;
+    display: block !important;
+  }
+  
+  .upNextContainer.upNextDialog {
+    bottom: 30px;
+  }
+  
+  .upNextDialog-poster {
+    display: block !important;
+  }
+  
+  h2.upNextDialog-nextVideoText {
+    line-height: 50px;
+    position: absolute;
+    bottom: 30px;
+    right: 0px;
+  }
+  
+  .upNextDialog .upNextDialog-buttons {
+    display: unset;
+    width: auto;
+  }
+  
+  .upNextDialog .btnStartNow {
+    float: right;
+    width: 250px;
+    margin-right: 80px;
+  }
+  
+  .upNextDialog .btnHide {
+    float: right;
+    width: 250px;
+  }
+}
+
+/* ===== BUTTON HOVER (POINTER: FINE) ===== */
+@media (pointer: fine) {
+  :root {
+    --background-hue: 0 !important;
+    --background-saturation: 0% !important;
+    --background-lightness: 11.76% !important;
+    --theme-text-color-alpha: .87 !important;
+    --header-blur-background: rgba(20, 170, 223, 0.7) !important;
+    --button-background-hue: var(--background-hue) !important;
+    --button-background-saturation: var(--background-saturation) !important;
+    --button-background-lightness: calc(var(--background-lightness) + 12.5%) !important;
+    --button-background-alpha: 0 !important;
+    --card-background-hue: var(--background-hue);
+    --card-background-saturation: var(--background-saturation);
+    --card-background-lightness: calc(var(--background-lightness) + 12.5%) !important;
+    --input-background-hue: var(--background-hue);
+    --input-background-saturation: var(--background-saturation) !important;
+    --input-background-lightness: calc(var(--background-lightness) + 11%) !important;
+    --dialog-border-width: var(--line-size) !important;
+  }
+  
+  .darkContentContainer-item {
+    --button-background-alpha: 0 !important;
+  }
+  
+  /* SPEZIFISCHER für die 3 Overlay Buttons - ENTFERNT backdrop-filter */
+  .cardOverlayButton-br .fab.fab-backdropfilter,
+  .cardOverlayButton-br .cardOverlayButton.fab-backdropfilter,
+  button.fab.cardOverlayButton-fab.fab-backdropfilter {
+    background: transparent !important;
+    background-color: transparent !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  
+  .cardOverlayButton-br .fab.fab-backdropfilter:hover,
+  .cardOverlayButton-br .cardOverlayButton.fab-backdropfilter:hover,
+  button.fab.cardOverlayButton-fab.fab-backdropfilter:hover {
+    background: rgba(20, 170, 223, 1) !important;
+    background-color: rgba(20, 170, 223, 1) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  
+  /* Allgemeine fab-backdropfilter Regel */
+  .fab-backdropfilter,
+  .raised-backdropfilter {
+    background: transparent !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    color: #fff !important;
+  }
+  
+  .fab-backdropfilter:hover,
+  .raised-backdropfilter:hover {
+    background: rgba(20, 170, 223, 1) !important;
+  }
+  
+  /* Poster Overlay Buttons */
+@media (pointer: fine) {
+  /* Generelle Buttons - transparent mit weißem Icon */
+  .raised, .fab {
+    background: transparent !important;
+    color: white !important;
+    transition: background 0.3s ease;
+  }
+  
+  /* Hover: Blauer Hintergrund, weißes Icon (Standard) */
+  .raised:hover, .fab:hover {
+    background: rgba(20, 170, 223, 1) !important;
+    color: white !important;
+  }
+  
+  /* Poster Overlay Buttons */
+  .cardOverlayButton-br .cardOverlayButton.fab,
+  button.fab.cardOverlayButton-fab,
+  .cardOverlayButton-br .raised {
+    background: transparent !important;
+    color: white !important;
+  }
+  
+  .cardOverlayButton-br .cardOverlayButton.fab:hover,
+  button.fab.cardOverlayButton-fab:hover,
+  .cardOverlayButton-br .raised:hover {
+    background: rgba(20, 170, 223, 1) !important;
+    color: white !important;
+  }
+  
+  /* GESEHEN (data-played="true"): Blaues Icon, transparenter Hintergrund */
+  .cardOverlayButton-br .cardOverlayButton[is="emby-playstatebutton"][data-played="true"],
+  button.fab.cardOverlayButton-fab[is="emby-playstatebutton"][data-played="true"] {
+    background: transparent !important;
+    color: rgba(20, 170, 223, 1) !important;
+  }
+  
+  /* GESEHEN + Hover: Weißer Hintergrund, blaues Icon */
+  .cardOverlayButton-br .cardOverlayButton[is="emby-playstatebutton"][data-played="true"]:hover,
+  button.fab.cardOverlayButton-fab[is="emby-playstatebutton"][data-played="true"]:hover {
+    background: white !important;
+    color: rgba(20, 170, 223, 1) !important;
+  }
+  
+  /* FAVORIT (data-isfavorite="true"): Blaues Icon, transparenter Hintergrund */
+  .cardOverlayButton-br .cardOverlayButton[is="emby-ratingbutton"][data-isfavorite="true"],
+  button.fab.cardOverlayButton-fab[is="emby-ratingbutton"][data-isfavorite="true"] {
+    background: transparent !important;
+    color: rgba(20, 170, 223, 1) !important;
+  }
+  
+  /* FAVORIT + Hover: Weißer Hintergrund, blaues Icon */
+  .cardOverlayButton-br .cardOverlayButton[is="emby-ratingbutton"][data-isfavorite="true"]:hover,
+  button.fab.cardOverlayButton-fab[is="emby-ratingbutton"][data-isfavorite="true"]:hover {
+    background: white !important;
+    color: rgba(20, 170, 223, 1) !important;
+  }
+  
+  /* Play Button */
+  button.fab.cardOverlayFab-primary.md-icon,
+  button.cardOverlayFab-primary.button-hoverable {
+    background: transparent !important;
+    color: white !important;
+    transition: background 0.3s ease;
+  }
+  
+  button.fab.cardOverlayFab-primary.md-icon:hover,
+  button.cardOverlayFab-primary.button-hoverable:hover,
+  .cardOverlayContainer:hover button.fab.cardOverlayFab-primary.md-icon {
+    background: rgba(20, 170, 223, 1) !important;
+  }
+  
+  /* SPEZIFISCHER für die 3 Overlay Buttons */
+  .cardOverlayButton-br .fab.fab-backdropfilter,
+  .cardOverlayButton-br .cardOverlayButton.fab-backdropfilter,
+  button.fab.cardOverlayButton-fab.fab-backdropfilter {
+    background: transparent !important;
+    background-color: transparent !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  
+  .cardOverlayButton-br .fab.fab-backdropfilter:hover,
+  .cardOverlayButton-br .cardOverlayButton.fab-backdropfilter:hover,
+  button.fab.cardOverlayButton-fab.fab-backdropfilter:hover {
+    background: rgba(20, 170, 223, 1) !important;
+    background-color: rgba(20, 170, 223, 1) !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+  
+  /* Allgemeine fab-backdropfilter Regel */
+  .fab-backdropfilter,
+  .raised-backdropfilter {
+    background: transparent !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    color: #fff !important;
+  }
+  
+  .fab-backdropfilter:hover,
+  .raised-backdropfilter:hover {
+    background: rgba(20, 170, 223, 1) !important;
+  }
+  
+  /* Scroll Buttons */
+  .emby-scrollbuttons-scrollbutton {
+    transition: transform 180ms ease-out, background 0.3s ease !important;
+    background: #ffffff30 !important;
+    color: white !important;
+    border-radius: 50% !important;
+    box-shadow: none !important;
+  }
+  
+  .emby-scrollbuttons-scrollbutton:hover,
+  .emby-scrollbuttons-scrollbutton:active {
+    background: rgba(20, 170, 223, 1) !important;
+    border-radius: 50% !important;
+  }
+}
+  
+  /* Generelle Buttons */
+  .raised, .fab {
+    background: transparent !important;
+    color: white !important;
+    transition: background 0.3s ease;
+  }
+  
+  .raised:hover, .fab:hover {
+    background: rgba(20, 170, 223, 1) !important;
+    color: white !important;
+  }
+  
+  /* Scroll Buttons */
+  .emby-scrollbuttons-scrollbutton {
+    transition: transform 180ms ease-out, background 0.3s ease !important;
+    background: #ffffff30 !important;
+    color: white !important;
+    border-radius: 50% !important;
+    box-shadow: none !important;
+  }
+  
+  .emby-scrollbuttons-scrollbutton:hover,
+  .emby-scrollbuttons-scrollbutton:active {
+    background: rgba(20, 170, 223, 1) !important;
+    border-radius: 50% !important;
+  }
+}
+
+@media {
+  button.btnDetailEdit.btnEditMetadata.secondaryText.flex-shrink-zero.paper-icon-button-light, 
+  button.btnDetailEdit.btnEditImages.secondaryText.flex-shrink-zero.paper-icon-button-light {
+    display: none !important;
+  }
+}
+
+.statCard .statCard-content {
+    background-color: rgba(20, 170, 223, .5) !important;
+}
+
+/* Checkbox Farbe überschreiben - alle möglichen Zustände */
+input[type="checkbox"].emby-checkbox:checked,
+input.emby-checkbox:checked,
+.emby-checkbox:checked {
+  accent-color: rgb(20, 170, 223) !important;
+}
+
+/* Für ältere Browser - Pseudo-Element */
+input.emby-checkbox:checked + span.checkboxLabel::before,
+input.emby-checkbox:checked + .checkboxLabel::before,
+.emby-checkbox:checked + .checkboxLabel::before {
+  border-color: rgb(20, 170, 223) !important;
+  background-color: rgb(20, 170, 223) !important;
+  background: rgb(20, 170, 223) !important;
+}
+
+/* Falls Emby custom Elements verwendet */
+input[is="emby-checkbox"]:checked {
+  accent-color: rgb(20, 170, 223) !important;
+}
