@@ -9,11 +9,11 @@ A Finimalism inspired CSS theme for Emby Media Servers Web Client
 Paste the following Code into "Dashboard -> General -> Custom CSS"
 
 ```
-@import url("https://raw.githack.com/v1rusnl/Embymalism/main/Embymalism_4.9.1.80.css");
+@import url("https://raw.githack.com/v1rusnl/Embymalism/main/Embymalism_4.9.1.90.css");
 ```
 
 The Import URL in this Readme is always the latest. 
-When Emby version changes, I will bump the CSS as soon as I have time.
+When Emby version changes, I will bump the CSS as soon as I have time to check for HTML/CSS code changes.
 
 
 ## Appreciation section
