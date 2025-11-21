@@ -15,6 +15,15 @@ img, div, button {
   image-rendering: -webkit-optimize-contrast;
 }
 
+/* ===== SPLASH SCREEN ===== */
+.app-splash-container {
+  background-image: url(https://i.imgur.com/WDXlX2s.jpeg) !important;
+}
+
+.app-splash {
+  background-image: url(https://i.imgur.com/dfN83Ea.png) !important;
+}
+
 /* ===== CSS VARIABLEN ===== */
 :root {
   --theme-primary-color: #14aadf !important;
