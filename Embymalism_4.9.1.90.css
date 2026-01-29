@@ -53,10 +53,11 @@ div.view-startup-login {
 }
 
 /* ===== HEADER + SCROLLBAR ===== */
-.emby-scroller {
-    -ms-overflow-style: none !important;  /* IE und Edge */
-    scrollbar-width: none !important;  /* Firefox */
+/*.emby-scroller {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
 }
+*/
 
 .skinHeader {
   height: auto!important;
@@ -310,11 +311,11 @@ i.navDrawerListItemIcon.listItemIcon.md-icon {
     .mainDrawer-mini .listItem {
         width: 114% !important;
     }
-}
-
+  }
+  
 /* ===== FORMULARE & INPUTS ===== */
 form, .readOnlyContent {
-  max-width: 100ch;
+  max-width: 79ch;
 }
 
 textarea.txtCustomCss {
@@ -870,14 +871,31 @@ form.verticalFieldItem.trackSelections .selectLabelText {
   border: 0!important;
 }
 
-.mediaInfoItem:nth-last-child(2) a {
-  padding: 5px 10px;
-  background: rgb(255 255 255 / 15%);
+/*.mediaInfoItem:nth-last-child(2) a {
+  padding: 5px 5px;
   margin-bottom: 5px;
-  margin-right: 5px;
-  -webkit-backdrop-filter: blur(5em);
-  backdrop-filter: blur(5em);
+  margin-right: 0px;
+  margin-top: 10px;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}*/
+
+.mediaInfoItem {
+  padding: 5px 5px;
+  margin-bottom: 10px;
+  margin-right: 0px;
+  margin-top: 10px;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
+
+/*.sectionTitle.sectionTitle-cards.secondaryText .mdblist-rating-container {
+    display: none !important;
+}
+
+.cardText.cardText-secondary.mediaInfoItems.cardText-mediaInfo .mdblist-rating-container  {
+    display: none !important;
+}*/
 
 div.endsAt.detailEndsAt.mediaInfoItem {
   visibility: hidden;
@@ -905,13 +923,14 @@ div.endsAt.detailEndsAt.mediaInfoItem {
 
 .verticalSection.verticalSection-cards.tagsSection .button-link, 
 .verticalSection.verticalSection-cards.tagsSection .button-link:hover {
-  padding: 5px 10px;
+  padding: 5px 17px;
   background: rgb(255 255 255 / 15%);
   margin-bottom: 5px;
   margin-right: 5px;
   -webkit-backdrop-filter: blur(5em);
   backdrop-filter: blur(5em);
   text-decoration: none;
+  border-radius: 100em;
 }
 
 /* ===== DETAIL BUTTONS ===== */
@@ -2250,7 +2269,7 @@ img.recordingDialog-img {
   .skinBody-withFullDrawer .withTabs .padded-top-page,
   .page-windowScroll.withTabs, 
   html:not(.layout-tv) .withTabs .padded-top-page {
-    padding-top: calc(6em + (var(--window-inset-top) * .7)) !important;
+    padding-top: calc(4em + (var(--window-inset-top) * .7)) !important;
   }
 }
 
