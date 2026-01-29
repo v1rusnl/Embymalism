@@ -482,7 +482,7 @@ i.cardIndicator.cardPlayedIndicator.playedIndicator.md-icon {
 }
 
 .card-hoverable:hover {
-  transform: scale(1.05);
+  transform: scale(1.01);
   z-index: 10 !important;
 }
 
@@ -492,7 +492,7 @@ i.cardIndicator.cardPlayedIndicator.playedIndicator.md-icon {
 }
 
 .peopleItemsContainer .card-hoverable:hover {
-  transform: scale(1.1);
+  transform: scale(1.01);
 }
 
 .peopleItemsContainer .card-hoverable:hover .cardOverlayContainer {
@@ -800,7 +800,8 @@ div.peopleSection .coveredImage {
 
 .detailImageContainer .card.detailImageContainerCard.card-hoverable {
   box-shadow: 5px 5px 17px -5px rgb(0 0 0 / 50%);
-  width: 117% !important;
+  width: 132% !important;
+  margin-top: -17px !important;
 }
 
 .detailLogo {
