@@ -837,6 +837,10 @@ div.peopleSection .coveredImage {
   padding-bottom: 0;
 }
 
+.detailTextContainer {
+    margin: 0 0em !important;
+}
+
 .detailTextContainer .verticalFieldItem {
   margin-bottom: 13px!important;
 }
