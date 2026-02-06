@@ -28,15 +28,19 @@ If you'd like to install addons, then copy the script inside the Addons you want
 Instructions like needed API Keys are at the top of each script.
 
 emby-elsewhere.js
+
 <img width="579" height="117" alt="image" src="https://github.com/user-attachments/assets/ecb64fea-2de5-498b-92a7-1313277fcedc" />
 
 emby-linklogos.js
+
 <img width="179" height="69" alt="image" src="https://github.com/user-attachments/assets/a2132845-ade0-42de-bda3-7a8a4223d482" />
 
 emby-ratings.js
+
 <img width="599" height="163" alt="image" src="https://github.com/user-attachments/assets/b6b93894-2e6f-49ef-8fbf-a29c8240a220" />
 
 emby-arrs.js
+
 <img width="116" height="93" alt="image" src="https://github.com/user-attachments/assets/518a5af5-fe89-4e70-8080-bacf18eb6f52" /> <img width="124" height="91" alt="image" src="https://github.com/user-attachments/assets/e4e4256b-ba6b-43e9-9e9c-d29561d84de0" />
 
 
