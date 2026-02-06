@@ -9,17 +9,16 @@
 
     const LOG_PREFIX = '🔗 Emby Link Logos:';
 
-    // Logo configuration for each supported service
     const LINK_LOGOS = {
         'imdb': {
             match: (href) => href.includes('imdb.com'),
-            logo: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/IMDb.png',
+            logo: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/IMDbsq.png',
             label: 'IMDb',
             height: '20px'
         },
         'tmdb': {
             match: (href) => href.includes('themoviedb.org'),
-            logo: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/TMDB.png',
+            logo: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/TMDBsq.png',
             label: 'TMDB',
             height: '25px'
         },
@@ -40,12 +39,8 @@
     const PROCESSED_ATTR = 'data-logo-processed';
 
     let debounceTimer = null;
+    let retryTimer = null;
 
-    /**
-     * Finds the currently visible item detail view.
-     * Emby keeps multiple view-item-item divs in the DOM;
-     * only the one without 'hide' class is currently displayed.
-     */
     function getVisibleDetailView() {
         const allViews = document.querySelectorAll('.view-item-item');
         for (const view of allViews) {
@@ -56,17 +51,11 @@
         return null;
     }
 
-    /**
-     * Replaces a text link element with a logo image.
-     * Preserves href, target, and all other link attributes.
-     */
     function replaceWithLogo(linkElement, config) {
         if (linkElement.hasAttribute(PROCESSED_ATTR)) return;
 
-        // Clear existing text content (including trailing comma)
         linkElement.textContent = '';
 
-        // Create logo image
         const img = document.createElement('img');
         img.src = config.logo;
         img.alt = config.label;
@@ -81,64 +70,87 @@
             transition: opacity 0.2s ease;
         `;
 
-        // Hover effect
         img.addEventListener('mouseenter', () => { img.style.opacity = '1'; });
         img.addEventListener('mouseleave', () => { img.style.opacity = '0.85'; });
 
         linkElement.appendChild(img);
 
-        // Update link styling for icon display
         linkElement.style.cssText += `
             display: inline-flex;
             align-items: center;
-            padding: 2px 0px;
+            padding: 2px 4px;
         `;
 
-        // Mark as processed to avoid duplicate replacements
         linkElement.setAttribute(PROCESSED_ATTR, 'true');
     }
 
     /**
-     * Processes all links within the linksSection of the visible detail view.
-     * Works for both Movies (IMDb, TMDB, Trakt) and Series (IMDb, TMDB, TheTVDB, Trakt).
-     * Removes comma separators and replaces text labels with logo icons.
+     * Prüft ob die Links tatsächlich vollständig gerendert sind.
+     * Ein Link gilt als "bereit", wenn er ein href-Attribut hat
+     * und sichtbaren Text oder Inhalt enthält.
      */
+    function areLinksReady(links) {
+        if (links.length === 0) return false;
+
+        for (const link of links) {
+            // Bereits verarbeitete Links überspringen
+            if (link.hasAttribute(PROCESSED_ATTR)) continue;
+
+            const href = link.href || '';
+            const text = link.textContent.trim();
+
+            // Link muss href UND sichtbaren Text haben
+            if (!href || !text) return false;
+        }
+        return true;
+    }
+
     function processLinks() {
         const visibleView = getVisibleDetailView();
-        if (!visibleView) return;
+        if (!visibleView) return false;
 
         const linksSection = visibleView.querySelector('.linksSection');
-        if (!linksSection) return;
+        if (!linksSection) return false;
 
         const linkContainer = linksSection.querySelector('.itemLinks');
-        if (!linkContainer) return;
-
-        // Skip if already fully processed
-        if (linkContainer.hasAttribute(PROCESSED_ATTR)) return;
+        if (!linkContainer) return false;
 
         const links = linkContainer.querySelectorAll('a[is="emby-linkbutton"]');
-        if (links.length === 0) return;
+        if (links.length === 0) return false;
 
-        let anyProcessed = false;
+        // ── Kernfix: Prüfen ob Links wirklich fertig gerendert sind ──
+        const unprocessedLinks = Array.from(links).filter(
+            l => !l.hasAttribute(PROCESSED_ATTR)
+        );
+
+        // Wenn alle schon verarbeitet sind → fertig
+        if (unprocessedLinks.length === 0) return true;
+
+        // Wenn Links noch nicht bereit sind → Retry signalisieren
+        if (!areLinksReady(links)) {
+            console.log(`${LOG_PREFIX} Links not ready yet, will retry...`);
+            return false;
+        }
+
+        let processedCount = 0;
 
         links.forEach(link => {
             if (link.hasAttribute(PROCESSED_ATTR)) return;
 
             const href = link.href || '';
 
-            // Find matching logo config
             for (const key in LINK_LOGOS) {
                 const config = LINK_LOGOS[key];
                 if (config.match(href)) {
                     replaceWithLogo(link, config);
-                    anyProcessed = true;
+                    processedCount++;
                     break;
                 }
             }
         });
 
-        if (anyProcessed) {
-            // Remove comma/separator text nodes between links
+        if (processedCount > 0) {
+            // Komma-Textknoten bereinigen
             const childNodes = Array.from(linkContainer.childNodes);
             childNodes.forEach(node => {
                 if (node.nodeType === Node.TEXT_NODE) {
@@ -149,33 +161,99 @@
                 }
             });
 
-            // Apply flex layout with spacing between logo links
-            linkContainer.style.cssText += 'display: flex; align-items: center; gap: 8px; flex-wrap: wrap;';
+            linkContainer.style.cssText += `
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                flex-wrap: wrap;
+            `;
 
-            // Mark container as processed
-            linkContainer.setAttribute(PROCESSED_ATTR, 'true');
+            console.log(`${LOG_PREFIX} Replaced ${processedCount} link(s) with logos.`);
+        }
 
-            console.log(`${LOG_PREFIX} Replaced ${links.length} link(s) with logos.`);
+        return true; // Erfolgreich verarbeitet
+    }
+
+    /**
+     * Versucht die Verarbeitung mit Retry-Logik.
+     * Probiert es mehrfach mit steigenden Intervallen,
+     * falls die Links noch nicht im DOM sind.
+     */
+    function processWithRetry(attempt = 0, maxAttempts = 15) {
+        if (retryTimer) clearTimeout(retryTimer);
+
+        const success = processLinks();
+
+        if (!success && attempt < maxAttempts) {
+            // Exponentielles Backoff: 200, 300, 400, 500, ... max 1500ms
+            const delay = Math.min(200 + (attempt * 100), 1500);
+            retryTimer = setTimeout(() => {
+                processWithRetry(attempt + 1, maxAttempts);
+            }, delay);
+        } else if (!success) {
+            console.log(`${LOG_PREFIX} Gave up after ${maxAttempts} attempts.`);
         }
     }
 
     /**
-     * Debounced processing to avoid excessive DOM operations
-     * during rapid mutations.
+     * Debounced Entry-Point – startet die Retry-Kette neu.
      */
     function debouncedProcess() {
         if (debounceTimer) clearTimeout(debounceTimer);
+        if (retryTimer) clearTimeout(retryTimer);
+
         debounceTimer = setTimeout(() => {
-            processLinks();
-        }, 300);
+            processWithRetry(0);
+        }, 200);
     }
 
-    // ── Initialization ──
+    // ── MutationObserver: Gezielter auf relevante Änderungen reagieren ──
+    const observer = new MutationObserver((mutations) => {
+        let shouldProcess = false;
 
-    // Watch for DOM changes to detect when detail pages are rendered
-    const observer = new MutationObserver(() => {
-        const visibleView = getVisibleDetailView();
-        if (visibleView) {
+        for (const mutation of mutations) {
+            // Fall 1: Neue Knoten wurden eingefügt
+            if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                for (const node of mutation.addedNodes) {
+                    if (node.nodeType !== Node.ELEMENT_NODE) continue;
+
+                    // Direkt eine linksSection oder itemLinks eingefügt?
+                    if (
+                        node.classList?.contains('linksSection') ||
+                        node.classList?.contains('itemLinks') ||
+                        node.querySelector?.('.linksSection') ||
+                        node.querySelector?.('.itemLinks')
+                    ) {
+                        shouldProcess = true;
+                        break;
+                    }
+
+                    // Oder eine view-item-item (Seitenwechsel)?
+                    if (
+                        node.classList?.contains('view-item-item') ||
+                        node.querySelector?.('.view-item-item')
+                    ) {
+                        shouldProcess = true;
+                        break;
+                    }
+                }
+            }
+
+            // Fall 2: Klasse 'hide' wurde geändert (View wird sichtbar)
+            if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                const target = mutation.target;
+                if (
+                    target.classList?.contains('view-item-item') &&
+                    !target.classList.contains('hide')
+                ) {
+                    shouldProcess = true;
+                }
+            }
+
+            if (shouldProcess) break;
+        }
+
+        if (shouldProcess) {
             debouncedProcess();
         }
     });
@@ -187,16 +265,17 @@
         attributeFilter: ['class']
     });
 
-    // Poll for URL changes (Emby SPA navigation)
+    // ── URL-Polling für SPA-Navigation ──
     let lastUrl = window.location.href;
     setInterval(() => {
         if (window.location.href !== lastUrl) {
             lastUrl = window.location.href;
+            console.log(`${LOG_PREFIX} URL changed, reprocessing...`);
             debouncedProcess();
         }
     }, 500);
 
-    // Initial processing
+    // ── Initialer Aufruf ──
     debouncedProcess();
 
     console.log(`${LOG_PREFIX} Initialization complete.`);
