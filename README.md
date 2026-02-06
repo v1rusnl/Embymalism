@@ -8,7 +8,7 @@ A Finimalism inspired CSS theme for Emby Media Servers Web Client
 Paste the following Code into "Dashboard -> General -> Custom CSS"
 
 ```
-@import url("https://raw.githack.com/v1rusnl/Embymalism/main/Embymalism.css");
+@import url("https://cdn.jsdelivr.net/gh/v1rusnl/Embymalism@latest/Embymalism.css");
 ```
 
 The Import URL in this Readme is always the latest. 
