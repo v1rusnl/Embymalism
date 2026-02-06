@@ -1,4 +1,4 @@
-/* ===== Embymalism_4.9.3.0 ===== */
+/* ===== Embymalism_4.9.1.90 ===== */
 
 @import url('https://fonts.googleapis.com/css2?family=Sofia+Sans:ital,wght@0,1..1000;1,1..1000&display=swap');
 
@@ -1094,7 +1094,7 @@ button.emby-tab-button.main-tab-button.emby-tab-button-active:hover {
 }
 
 .emby-button.raised {
-  background: rgb(255 255 255 / 30%) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
 }
 
 .btnMainPlay i.md-icon.detailButton-icon, 
@@ -2291,7 +2291,7 @@ img.recordingDialog-img {
   }
   
   button.detailButton {
-    background: rgb(255 255 255 / 30%) !important;
+    background: rgba(255, 255, 255, 0.1) !important;
   }
   
   .itemPrimaryNameContainer-logo {
