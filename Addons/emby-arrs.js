@@ -219,7 +219,7 @@
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
         link.title = label;
-        link.style.cssText = 'display: inline-flex; align-items: center; gap: 5px;';
+        link.style.cssText = 'display: inline-flex; align-items: center; gap: 5px; padding: 0;';
 
         if (iconUrl) {
             const icon = document.createElement('img');
@@ -261,8 +261,9 @@
         section.appendChild(header);
 
         const buttonContainer = document.createElement('div');
-        buttonContainer.className = 'sectionTitle sectionTitle-cards padded-left padded-left-page padded-right focusable focuscontainer-x secondaryText textItems';
-        buttonContainer.setAttribute('data-focusabletype', 'nearest');
+			buttonContainer.className = 'sectionTitle sectionTitle-cards itemLinks padded-left padded-left-page padded-right focusable focuscontainer-x secondaryText textItems';
+			buttonContainer.setAttribute('data-focusabletype', 'nearest');
+			buttonContainer.style.cssText = 'padding-top: 0; padding-bottom: 0;';
 
         buttons.forEach((btn, index) => {
             buttonContainer.appendChild(btn);
