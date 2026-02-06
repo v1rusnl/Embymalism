@@ -9,17 +9,11 @@ A Finimalism inspired CSS theme for Emby Media Servers Web Client
 Paste the following Code into "Dashboard -> General -> Custom CSS"
 
 ```
-@import url("https://raw.githack.com/v1rusnl/Embymalism/main/Embymalism_4.9.1.90.css");
+@import url("https://raw.githack.com/v1rusnl/Embymalism/main/Embymalism.css");
 ```
 
 The Import URL in this Readme is always the latest. 
 When Emby version changes, I will bump the CSS as soon as I have time to check for HTML/CSS code changes.
-
-
-## Appreciation section
-
-Thanks for the color concept [tedhinklater](https://github.com/tedhinklater/finimalism) and fillidill for the [Plex Base CSS](https://emby.media/community/index.php?/topic/101124-new-theme-plex-inspired-look/).
-
 
 ## Media
 
@@ -29,6 +23,20 @@ Thanks for the color concept [tedhinklater](https://github.com/tedhinklater/fini
 
 
 https://github.com/user-attachments/assets/7ffb51ff-1936-49c8-a31a-8af38f184bb9
+
+
+## Addons
+
+If you'd like to install addons, then copy the script inside the Addons you want to use into Emby Server /system/dashboard-ui and add it to index.html. 
+Instructions like needed API Keys are at the top of each script.
+
+
+
+
+## Appreciation section
+
+Thanks for the color concept [tedhinklater](https://github.com/tedhinklater/finimalism) and fillidill for the [Plex Base CSS](https://emby.media/community/index.php?/topic/101124-new-theme-plex-inspired-look/). Also thanks to [n00bcodr](https://github.com/n00bcodr/Jellyfin-Elsewhere)
+and [Druidblack](https://github.com/Druidblack/jellyfin_ratings) for the original scripts for Jellyfin.
 
 
 ## Links

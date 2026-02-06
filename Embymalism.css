@@ -1,4 +1,4 @@
-/* ===== Embymalism_4.9.1.80 ===== */
+/* ===== Embymalism_4.9.3.0 ===== */
 
 @import url('https://fonts.googleapis.com/css2?family=Sofia+Sans:ital,wght@0,1..1000;1,1..1000&display=swap');
 
@@ -53,10 +53,11 @@ div.view-startup-login {
 }
 
 /* ===== HEADER + SCROLLBAR ===== */
-.emby-scroller {
-    -ms-overflow-style: none !important;  /* IE und Edge */
-    scrollbar-width: none !important;  /* Firefox */
+/*.emby-scroller {
+    -ms-overflow-style: none !important;
+    scrollbar-width: none !important;
 }
+*/
 
 .skinHeader {
   height: auto!important;
@@ -310,11 +311,11 @@ i.navDrawerListItemIcon.listItemIcon.md-icon {
     .mainDrawer-mini .listItem {
         width: 114% !important;
     }
-}
-
+  }
+  
 /* ===== FORMULARE & INPUTS ===== */
 form, .readOnlyContent {
-  max-width: 100ch;
+  max-width: 70ch;
 }
 
 textarea.txtCustomCss {
@@ -481,7 +482,7 @@ i.cardIndicator.cardPlayedIndicator.playedIndicator.md-icon {
 }
 
 .card-hoverable:hover {
-  transform: scale(1.05);
+  transform: scale(1.01);
   z-index: 10 !important;
 }
 
@@ -491,7 +492,7 @@ i.cardIndicator.cardPlayedIndicator.playedIndicator.md-icon {
 }
 
 .peopleItemsContainer .card-hoverable:hover {
-  transform: scale(1.1);
+  transform: scale(1.01);
 }
 
 .peopleItemsContainer .card-hoverable:hover .cardOverlayContainer {
@@ -799,7 +800,8 @@ div.peopleSection .coveredImage {
 
 .detailImageContainer .card.detailImageContainerCard.card-hoverable {
   box-shadow: 5px 5px 17px -5px rgb(0 0 0 / 50%);
-  width: 117% !important;
+  width: 132% !important;
+  margin-top: -17px !important;
 }
 
 .detailLogo {
@@ -833,6 +835,10 @@ div.peopleSection .coveredImage {
 
 .topDetailsContainer .topDetailsMain {
   padding-bottom: 0;
+}
+
+.detailTextContainer {
+    margin: 0 0em !important;
 }
 
 .detailTextContainer .verticalFieldItem {
@@ -870,14 +876,31 @@ form.verticalFieldItem.trackSelections .selectLabelText {
   border: 0!important;
 }
 
-.mediaInfoItem:nth-last-child(2) a {
-  padding: 5px 10px;
-  background: rgb(255 255 255 / 15%);
+/*.mediaInfoItem:nth-last-child(2) a {
+  padding: 5px 5px;
   margin-bottom: 5px;
-  margin-right: 5px;
-  -webkit-backdrop-filter: blur(5em);
-  backdrop-filter: blur(5em);
+  margin-right: 0px;
+  margin-top: 10px;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}*/
+
+.mediaInfoItem {
+  padding: 5px 5px;
+  margin-bottom: 10px;
+  margin-right: 0px;
+  margin-top: 10px;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
+
+/*.sectionTitle.sectionTitle-cards.secondaryText .mdblist-rating-container {
+    display: none !important;
+}
+
+.cardText.cardText-secondary.mediaInfoItems.cardText-mediaInfo .mdblist-rating-container  {
+    display: none !important;
+}*/
 
 div.endsAt.detailEndsAt.mediaInfoItem {
   visibility: hidden;
@@ -905,13 +928,14 @@ div.endsAt.detailEndsAt.mediaInfoItem {
 
 .verticalSection.verticalSection-cards.tagsSection .button-link, 
 .verticalSection.verticalSection-cards.tagsSection .button-link:hover {
-  padding: 5px 10px;
+  padding: 5px 17px;
   background: rgb(255 255 255 / 15%);
   margin-bottom: 5px;
   margin-right: 5px;
   -webkit-backdrop-filter: blur(5em);
   backdrop-filter: blur(5em);
   text-decoration: none;
+  border-radius: 100em;
 }
 
 /* ===== DETAIL BUTTONS ===== */
@@ -2250,7 +2274,7 @@ img.recordingDialog-img {
   .skinBody-withFullDrawer .withTabs .padded-top-page,
   .page-windowScroll.withTabs, 
   html:not(.layout-tv) .withTabs .padded-top-page {
-    padding-top: calc(6em + (var(--window-inset-top) * .7)) !important;
+    padding-top: calc(4em + (var(--window-inset-top) * .7)) !important;
   }
 }
 
@@ -3081,3 +3105,34 @@ input.emby-checkbox:checked + .checkboxLabel::before,
 input[is="emby-checkbox"]:checked {
   accent-color: rgb(20, 170, 223) !important;
 }
+
+/* Emby Custom JS sections (Reviews, Elsewhere) */
+/* Emby Reviews */
+.emby-reviews-section summary {
+    background: none !important;
+    font-size: 1.5em !important;
+    justify-content: flex-start;
+}
+
+.emby-reviews-section summary:hover {
+    background: none !important;
+}
+
+.emby-reviews-none {
+    display: none !important;
+}
+
+/* Emby Elsewhere */
+div.ee-region-container.ee-default-region {
+    background: none !important;
+}
+
+div.ee-region-header {
+    justify-content: flex-start !important;
+}
+
+a.ee-region-title {
+    font-size: 1.5em !important;
+    flex: 0 0 auto !important;
+    padding-right: 14px !important;
+  }
