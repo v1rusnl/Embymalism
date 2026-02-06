@@ -325,7 +325,7 @@ textarea.txtCustomCss {
 .emby-input, .emby-textarea, .emby-select, 
 span.checkboxLabel-lockedfield.checkboxLabel-lockedfield-embeddedintofield.checkboxLabel, 
 span.checkboxLabel-lockedfield.checkboxLabel-lockedfield-standalone.checkboxLabel {
-  background: rgb(0 0 0 / 30%) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
 }
 
 .emby-input:focus, .emby-textarea:focus {
@@ -2320,7 +2320,7 @@ img.recordingDialog-img {
   }
   
   div.verticalSection.audioVideoMediaInfo .cardContent {
-    background-color: rgb(0 0 0 / 15%) !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
   }
   
   @media (min-width: 50em) {
@@ -2674,7 +2674,7 @@ img.recordingDialog-img {
   }
   
   .mainDrawer.drawer-docked.drawer-open:not(.mainDrawer-mini):hover .navDrawerSearchFieldContainer .emby-input {
-    background-color: rgb(0 0 0 / 30%) !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
     transition: opacity 0.2s 0.7s ease;
     transition: 0.2s;
     transition-delay: 0s;
@@ -3122,6 +3122,10 @@ input[is="emby-checkbox"]:checked {
     display: none !important;
 }
 
+.emby-review-card {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
 /* Emby Elsewhere */
 div.ee-region-container.ee-default-region {
     background: none !important;
@@ -3136,3 +3140,7 @@ a.ee-region-title {
     flex: 0 0 auto !important;
     padding-right: 14px !important;
   }
+
+div.ee-region-container.ee-search-result-region {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
