@@ -228,7 +228,6 @@
             icon.style.cssText = 'width: 25px; height: 25px; object-fit: contain; vertical-align: middle;';
             link.appendChild(icon);
         }
-        link.appendChild(document.createTextNode(label));
         return link;
     }
 
