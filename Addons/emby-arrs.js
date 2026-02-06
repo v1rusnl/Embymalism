@@ -322,7 +322,7 @@
                 if (CONFIG.RADARR_API_KEY && CONFIG.RADARR_API_KEY !== 'DEIN_RADARR_API_KEY' && tmdbId) {
                     const radarrResult = await lookupRadarr(tmdbId);
                     const radarrUrl = buildRadarrUrl(radarrResult);
-                    const radarrIcon = 'https://cdn.jsdelivr.net/gh/selfhst/icons/svg/radarr-light-hybrid-light.svg';
+                    const radarrIcon = 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/radarr.png';
                     buttons.push(createArrButton('Radarr', radarrUrl, radarrIcon));
                     console.log(`${LOG_PREFIX} Radarr-Link: ${radarrUrl}`);
                 }
@@ -332,7 +332,7 @@
                     console.log(`${LOG_PREFIX} Serie: TVDB=${tvdbId}, TMDB=${tmdbId}, Name="${item.Name}"`);
                     const sonarrResult = await lookupSonarr(tvdbId, item.Name);
                     const sonarrUrl = buildSonarrUrl(sonarrResult);
-                    const sonarrIcon = 'https://cdn.jsdelivr.net/gh/selfhst/icons/svg/sonarr.svg';
+                    const sonarrIcon = 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/sonarr.png';
                     buttons.push(createArrButton('Sonarr', sonarrUrl, sonarrIcon));
                     console.log(`${LOG_PREFIX} Sonarr-Link: ${sonarrUrl} (found: ${sonarrResult.found})`);
                 }
