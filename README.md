@@ -25,23 +25,29 @@ When Emby version changes, I will bump the CSS as soon as I have time to check f
 https://github.com/user-attachments/assets/7ffb51ff-1936-49c8-a31a-8af38f184bb9
 
 
-## Addons
+## Repo Addons
 
 If you'd like to install addons, then copy the script inside the Addons you want to use into Emby Server /system/dashboard-ui and add it to index.html. 
 Instructions like needed API Keys are at the top of each script.
 
+emby-elsewhere.js
+<img width="579" height="117" alt="image" src="https://github.com/user-attachments/assets/ecb64fea-2de5-498b-92a7-1313277fcedc" />
 
+emby-linklogos.js
+<img width="179" height="69" alt="image" src="https://github.com/user-attachments/assets/a2132845-ade0-42de-bda3-7a8a4223d482" />
 
+emby-ratings.js
+<img width="599" height="163" alt="image" src="https://github.com/user-attachments/assets/b6b93894-2e6f-49ef-8fbf-a29c8240a220" />
+
+## External Addons
+
+[Spotlight Bar for Homescreen](https://github.com/v1rusnl/EmbySpotlight)
+[Review Section in Detail Screen](https://github.com/v1rusnl/EmbyReviews)
 
 ## Appreciation section
 
 Thanks for the color concept [tedhinklater](https://github.com/tedhinklater/finimalism) and fillidill for the [Plex Base CSS](https://emby.media/community/index.php?/topic/101124-new-theme-plex-inspired-look/). Also thanks to [n00bcodr](https://github.com/n00bcodr/Jellyfin-Elsewhere)
 and [Druidblack](https://github.com/Druidblack/jellyfin_ratings) for the original scripts for Jellyfin.
-
-
-## Links
-
-[Spotlight Bar for Homescreen](https://github.com/v1rusnl/EmbySpotlight)
 
 
 ## License
