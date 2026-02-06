@@ -13,13 +13,13 @@
     const LINK_LOGOS = {
         'imdb': {
             match: (href) => href.includes('imdb.com'),
-            logo: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/IMDbsq.png',
+            logo: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/IMDb.png',
             label: 'IMDb',
             height: '20px'
         },
         'tmdb': {
             match: (href) => href.includes('themoviedb.org'),
-            logo: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/TMDBsq.png',
+            logo: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/TMDB.png',
             label: 'TMDB',
             height: '25px'
         },
