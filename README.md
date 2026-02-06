@@ -1,4 +1,3 @@
-
 # Embymalism
 
 A Finimalism inspired CSS theme for Emby Media Servers Web Client
@@ -38,6 +37,10 @@ emby-linklogos.js
 
 emby-ratings.js
 <img width="599" height="163" alt="image" src="https://github.com/user-attachments/assets/b6b93894-2e6f-49ef-8fbf-a29c8240a220" />
+
+emby-arrs.js
+<img width="116" height="93" alt="image" src="https://github.com/user-attachments/assets/518a5af5-fe89-4e70-8080-bacf18eb6f52" /> <img width="124" height="91" alt="image" src="https://github.com/user-attachments/assets/e4e4256b-ba6b-43e9-9e9c-d29561d84de0" />
+
 
 ## External Addons
 
