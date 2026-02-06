@@ -15,13 +15,11 @@ The Import URL in this Readme is always the latest.
 When Emby version changes, I will bump the CSS as soon as I have time to check for HTML/CSS code changes.
 
 ## Media
+<img width="800" alt="image" src="https://github.com/user-attachments/assets/af43eb32-2434-4fbd-83b5-33ac3d288cd8" />
+<img width="800" alt="image" src="https://github.com/user-attachments/assets/39936f51-4549-466d-b7d0-01b88cec509e" />
+<img width="800" alt="image" src="https://github.com/user-attachments/assets/8758168f-15cb-45a4-bdee-32eb5f0a2704" />
+<img width="800" alt="image" src="https://github.com/user-attachments/assets/2901e2ba-1300-4fa9-867b-b0753646ea92" />
 
-<img width="800" alt="Screenshot 2025-11-10 105309" src="https://github.com/user-attachments/assets/ae351d89-f306-4178-8967-533df6fc0b3f" />
-<img width="800" alt="Screenshot 2025-11-10 103343" src="https://github.com/user-attachments/assets/276e022e-104f-4adc-8478-c6ca20e4d006" />
-<img width="800" alt="Screenshot 2025-11-10 103506" src="https://github.com/user-attachments/assets/0d7fd79e-dfe1-4ed2-bebd-fb5ec75547c2" />
-
-
-https://github.com/user-attachments/assets/7ffb51ff-1936-49c8-a31a-8af38f184bb9
 
 
 ## Repo Addons
@@ -45,12 +43,13 @@ emby-arrs.js
 ## External Addons
 
 [Spotlight Bar for Homescreen](https://github.com/v1rusnl/EmbySpotlight)
+
 [Review Section in Detail Screen](https://github.com/v1rusnl/EmbyReviews)
 
 ## Appreciation section
 
-Thanks for the color concept [tedhinklater](https://github.com/tedhinklater/finimalism) and fillidill for the [Plex Base CSS](https://emby.media/community/index.php?/topic/101124-new-theme-plex-inspired-look/). Also thanks to [n00bcodr](https://github.com/n00bcodr/Jellyfin-Elsewhere)
-and [Druidblack](https://github.com/Druidblack/jellyfin_ratings) for the original scripts for Jellyfin.
+Thanks for the color concept [tedhinklater](https://github.com/tedhinklater/finimalism) and fillidill for the [Plex Base CSS](https://emby.media/community/index.php?/topic/101124-new-theme-plex-inspired-look/). 
+Also thanks to n00bcodr for [Elsewhere](https://github.com/n00bcodr/Jellyfin-Elsewhere) and [Jellyfin Enhanced](https://github.com/n00bcodr/Jellyfin-Enhanced) and [Druidblack](https://github.com/Druidblack/jellyfin_ratings) for the original scripts for Jellyfin.
 
 
 ## License
