@@ -6,33 +6,10 @@
  * Manual Overrides for RT can be set in line 62 ff.
  * Add <script src="emby-ratings.js"></script> in index.html before </body>
  */
+
 if (typeof GM_xmlhttpRequest === 'undefined') {
-  const PROXIES = [
-    'https://api.allorigins.win/raw?url=',
-    'https://api.codetabs.com/v1/proxy?quest='
-  ];
-  const DIRECT_DOMAINS = [
-    'api.mdblist.com',
-    'graphql.anilist.co',
-    'query.wikidata.org',
-    'www.google.com',
-    'api.themoviedb.org'
-  ];
-  
   window.GM_xmlhttpRequest = function({ method = 'GET', url, headers = {}, data, onload, onerror }) {
-    const isDirect = DIRECT_DOMAINS.some(d => url.includes(d));
-    let fetchUrl;
-    
-    if (isDirect) {
-      fetchUrl = url;
-    } else {
-      const proxy = PROXIES[Math.floor(Math.random() * PROXIES.length)];
-      const sep = url.includes('?') ? '&' : '?';
-      const bump = `_=${Date.now()}`;
-      fetchUrl = proxy + encodeURIComponent(url + sep + bump);
-    }
-    
-    fetch(fetchUrl, {
+    fetch(url, {
       method,
       headers,
       body: data,
@@ -48,6 +25,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
     });
   };
 }
+
 (function() {
   'use strict';
   
