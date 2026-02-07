@@ -2,10 +2,10 @@
  * Emby Ratings Integration
  * Adapted Jellyfin JS snippet -> THX to https://github.com/Druidblack/jellyfin_ratings
  * Shows IMDb, Rotten Tomatoes, Metacritic, Trakt, Letterboxd, AniList
- * Add your TMDB and MDBList API keys in line 53+54
- * Copy script inside /system/dashboard-ui/ and add <script src="emby-ratings.js"></script> in index.html before </body>
+ * Paste your MDBList and TMDB API keys into line 53+54
+ * Manual Overrides for RT can be set in line 62 ff.
+ * Add <script src="emby-ratings.js"></script> in index.html before </body>
  */
- 
 if (typeof GM_xmlhttpRequest === 'undefined') {
   const PROXIES = [
     'https://api.allorigins.win/raw?url=',
@@ -54,6 +54,25 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
   const MDBLIST_API_KEY = 'YOUR_API_KEY';
   const TMDB_API_KEY    = 'YOUR_API_KEY';
   
+  // ══════════════════════════════════════════════════════════════════
+  // MANUELLE OVERRIDES: TMDb-IDs für erzwungene Badges
+  // Füge hier TMDb-IDs hinzu, die das jeweilige Badge erhalten sollen,
+  // auch wenn die Score/Votes-Schwellenwerte nicht erreicht werden.
+  // ══════════════════════════════════════════════════════════════════
+  const CERTIFIED_FRESH_OVERRIDES = [
+    // '550',      // Fight Club
+    // '680',      // Pulp Fiction
+    // '13',       // Forrest Gump
+  ];
+  
+  const VERIFIED_HOT_OVERRIDES = [
+    '1054867',      // One Battle after another
+    // '550',      // Fight Club
+    // '299536',   // Avengers: Infinity War
+    // '438631',   // Dune
+  ];
+  // ══════════════════════════════════════════════════════════════════
+  
   const LOGO = {
         imdb: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/IMDb.png',
         tmdb: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/TMDB.png',
@@ -62,7 +81,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
         tomatoes_certified: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/rotten-tomatoes-certified.png',
         audience: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Rotten_Tomatoes_positive_audience.png',
         audience_rotten: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Rotten_Tomatoes_negative_audience.png',
-        rotten_ver: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/roten_tomatoes_ver.png',
+        rotten_ver: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Rotten_Tomatoes_ver.png',
         metacritic: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Metacritic.png',
         metacriticms: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/metacriticms.png',
         metacriticus: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/mus2.png',
@@ -78,6 +97,26 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
   
   setInterval(scanLinks, 1000);
   scanLinks();
+  
+  function findImdbIdFromPage() {
+    if (currentImdbId) return currentImdbId;
+    
+    const imdbLink = document.querySelector(
+      'a[href*="imdb.com/title/tt"], ' +
+      'a.button-link[href*="imdb.com/title/tt"], ' +
+      'a.emby-button[href*="imdb.com/title/tt"]'
+    );
+    
+    if (imdbLink) {
+      const m = imdbLink.href.match(/imdb\.com\/title\/(tt\d+)/);
+      if (m) {
+        currentImdbId = m[1];
+        return m[1];
+      }
+    }
+    
+    return null;
+  }
   
   function getStarBox(node) {
     return node?.closest('.itemMiscInfo.itemMiscInfo-primary') || 
@@ -227,7 +266,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
     const presentRe = '(?:present|now|current|Н\\/В|Н\\.В\\.|н\\/в|н\\.в\\.|по\\s*наст\\.?\\s*времен[ию]?)';
     const dash = '[–—-]';
     const isYearish  = t => /^\d{4}$/.test(t) || new RegExp(`^\\d{4}\\s*${dash}\\s*(?:\\d{4}|${presentRe})$`, 'i').test(t);
-    const isRuntime  = t => /^\d+\s*(?:m|min|мин)\b/i.test(t);
+    const isRuntime  = t => /^\d+\s*(?:m|min|мін)\b/i.test(t);
     
     document.querySelectorAll('.itemMiscInfo.itemMiscInfo-primary, .mediaInfoItems').forEach(box => {
       if (isInEpisodeListView(box)) return;
@@ -277,21 +316,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
     }
     
     fetchMDBList(type, tmdbId, container);
-    
-    if (currentImdbId) {
-      fetchRTCertified(currentImdbId, certified => {
-        if (certified) {
-          const img = container.querySelector('img[data-source="tomatoes"]');
-          if (img) img.src = LOGO.tomatoes_certified;
-        }
-      });
-      fetchRTAudienceCertified(currentImdbId, positive => {
-        if (positive) {
-          const img = container.querySelector('img[data-source="audience"]');
-          if (img) img.src = LOGO.rotten_ver;
-        }
-      });
-    }
   }
   
   function fetchTmdbEpisodeRating(tvId, season, episode, container) {
@@ -387,30 +411,67 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
         container.dataset.originalTitle = data.original_title || data.title || '';
         container.dataset.year          = data.year || '';
         
-        // Extract Metacritic votes for Must-See check
+        // Check manual overrides for this tmdbId
+        const isCertifiedFreshOverride = CERTIFIED_FRESH_OVERRIDES.includes(String(tmdbId));
+        const isVerifiedHotOverride    = VERIFIED_HOT_OVERRIDES.includes(String(tmdbId));
+        
+        // ── First pass: collect all scores & votes for special logo decisions ──
         let metacriticScore = null;
         let metacriticVotes = null;
+        let tomatoesScore   = null;
+        let tomatoesVotes   = null;
+        let audienceScore   = null;
+        let audienceVotes   = null;
         
         if (Array.isArray(data.ratings)) {
-          // First pass: find Metacritic data
           data.ratings.forEach(r => {
+            if (r.value == null) return;
             const key = r.source.toLowerCase();
+            
             if (key === 'metacritic') {
               metacriticScore = r.value;
               metacriticVotes = r.votes;
             }
+            else if (key === 'tomatoes') {
+              tomatoesScore = r.value;
+              tomatoesVotes = r.votes;
+            }
+            else if (key.includes('popcorn') || key.includes('audience')) {
+              audienceScore = r.value;
+              audienceVotes = r.votes;
+            }
           });
           
-          // Second pass: render all ratings
+          // ── Second pass: render all ratings with correct logos ──
           data.ratings.forEach(r => {
             if (r.value == null) return;
             
             let key = r.source.toLowerCase().replace(/\s+/g, '_');
             
-            if (key === 'tomatoes') key = r.value < 60 ? 'tomatoes_rotten' : 'tomatoes';
-            else if (key.includes('popcorn')) key = r.value < 60 ? 'audience_rotten' : 'audience';
+            // ── Rotten Tomatoes Critics ──
+            if (key === 'tomatoes') {
+              if (r.value < 60) {
+                key = 'tomatoes_rotten';
+              } else if (isCertifiedFreshOverride || (tomatoesScore >= 75 && tomatoesVotes >= 80)) {
+                // Certified Fresh: manual override OR score >= 75 AND votes >= 80
+                key = 'tomatoes_certified';
+              } else {
+                key = 'tomatoes';
+              }
+            }
+            // ── Rotten Tomatoes Audience ──
+            else if (key.includes('popcorn') || key.includes('audience')) {
+              if (r.value < 60) {
+                key = 'audience_rotten';
+              } else if (isVerifiedHotOverride || (audienceScore >= 90 && audienceVotes >= 500)) {
+                // Verified Hot: manual override OR score >= 90% AND >= 500 verified ratings
+                key = 'rotten_ver';
+              } else {
+                key = 'audience';
+              }
+            }
+            // ── Metacritic ──
             else if (key === 'metacritic') {
-              // Must-See: Score > 81 AND Votes > 14
               const isMustSee = metacriticScore > 81 && metacriticVotes > 14;
               key = isMustSee ? 'metacriticms' : 'metacritic';
             }
@@ -437,8 +498,10 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
           });
         }
         
-        if (currentImdbId) {
-          fetchAniListRating(currentImdbId, container);
+        // ── AniList (still uses IMDb for lookup, but called after render) ──
+        const imdbId = findImdbIdFromPage();
+        if (imdbId) {
+          fetchAniListRating(imdbId, container);
         }
       }
     });
@@ -556,78 +619,5 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
     span.textContent = score;
     span.style.cssText = 'margin-right:8px; font-size:1em; vertical-align:middle;';
     container.appendChild(span);
-  }
-  
-  function fetchRTCertified(imdbId, cb) {
-    const sparql = `
-      SELECT ?rtid WHERE {
-        ?item wdt:P345 "${imdbId}" .
-        ?item wdt:P1258 ?rtid .
-      } LIMIT 1`;
-    
-    GM_xmlhttpRequest({
-      method: 'GET',
-      url: 'https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparql),
-      onload(res) {
-        if (res.status !== 200) return cb(false);
-        let json;
-        try { json = JSON.parse(res.responseText); } catch { return cb(false); }
-        const b = json.results.bindings;
-        if (!b.length || !b[0].rtid.value) return cb(false);
-        const id = b[0].rtid.value;
-        const rtUrl = id.startsWith('http') ? id : 'https://www.rottentomatoes.com/' + id;
-        
-        GM_xmlhttpRequest({
-          method: 'GET',
-          url: rtUrl,
-          onload(r) {
-            if (r.status !== 200) return cb(false);
-            const m = r.responseText.match(/<script\s+id="media-scorecard-json"[^>]*>([\s\S]*?)<\/script>/);
-            if (!m) return cb(false);
-            let obj;
-            try { obj = JSON.parse(m[1]); } catch { return cb(false); }
-            cb(!!(obj.criticsScore && obj.criticsScore.certified));
-          },
-          onerror: () => cb(false)
-        });
-      },
-      onerror: () => cb(false)
-    });
-  }
-  
-  function fetchRTAudienceCertified(imdbId, cb) {
-    const sparql = `
-      SELECT ?rtid WHERE {
-        ?item wdt:P345 "${imdbId}" .
-        ?item wdt:P1258 ?rtid .
-      } LIMIT 1`;
-    
-    GM_xmlhttpRequest({
-      method: 'GET',
-      url: 'https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparql),
-      onload(res) {
-        if (res.status !== 200) return cb(false);
-        let json;
-        try { json = JSON.parse(res.responseText); } catch { return cb(false); }
-        const b = json.results.bindings;
-        if (!b.length || !b[0].rtid.value) return cb(false);
-        const id = b[0].rtid.value;
-        const rtUrl = id.startsWith('http') ? id : 'https://www.rottentomatoes.com/' + id;
-        
-        GM_xmlhttpRequest({
-          method: 'GET',
-          url: rtUrl,
-          onload(r) {
-            if (r.status !== 200) return cb(false);
-            const m = r.responseText.match(/<script\s+id="media-scorecard-json"[^>]*>([\s\S]*?)<\/script>/);
-            if (!m) return cb(false);
-            const jsonStr = m[1];
-            cb(jsonStr.includes('POSITIVE","certified":true'));
-          },
-          onerror: () => cb(false)
-        });
-      },
-      onerror: () => cb(false)
-    });
   }
 })();
