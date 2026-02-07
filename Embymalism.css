@@ -315,7 +315,7 @@ i.navDrawerListItemIcon.listItemIcon.md-icon {
   
 /* ===== FORMULARE & INPUTS ===== */
 form, .readOnlyContent {
-  max-width: 70ch;
+  max-width: 85ch;
 }
 
 textarea.txtCustomCss {
@@ -842,7 +842,7 @@ div.peopleSection .coveredImage {
 }
 
 .detailTextContainer .verticalFieldItem {
-  margin-bottom: 13px!important;
+  margin-bottom: 19px!important;
 }
 
 .detailTextContainer .trackSelections .selectLabel {
@@ -873,7 +873,9 @@ form.verticalFieldItem.trackSelections .selectLabelText {
 
 .mediaInfoPrimary .mediaInfoItem-border,
 .mediaInfoItem-border {
-  border: 0!important;
+  border: 0 !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 5px !important;
 }
 
 /*.mediaInfoItem:nth-last-child(2) a {
@@ -885,11 +887,14 @@ form.verticalFieldItem.trackSelections .selectLabelText {
   backdrop-filter: none;
 }*/
 
+div.mediaInfo.verticalFieldItem.detail-mediaInfoPrimary.flex.align-items-center.flex-wrap-wrap.reduce-font-size-tv.mediaInfoItems.readOnlyContent.detail-lineItem.reduce-font-size-mobile.detail-mediaInfoPrimary-autocondense.focusable.focuscontainer-x {
+  margin-left: -6px !important;
+}
+
 .mediaInfoItem {
   padding: 5px 5px;
   margin-bottom: 10px;
   margin-right: 0px;
-  margin-top: 10px;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
 }
@@ -902,9 +907,9 @@ form.verticalFieldItem.trackSelections .selectLabelText {
     display: none !important;
 }*/
 
-div.endsAt.detailEndsAt.mediaInfoItem {
+/*div.endsAt.detailEndsAt.mediaInfoItem {
   visibility: hidden;
-}
+}*/
 
 .detailMainContainerParent:not(.detailMainContainerParent-fade) .overview-container .overview-text {
   height: auto;
@@ -3107,6 +3112,11 @@ input[is="emby-checkbox"]:checked {
 }
 
 /* Emby Custom JS sections (Reviews, Elsewhere) */
+/* Emby Ratings */
+div.mdblist-rating-row.verticalFieldItem.detail-lineItem {
+    margin-bottom: 5px !important;
+}
+
 /* Emby Reviews */
 .emby-reviews-section summary {
     background: none !important;
