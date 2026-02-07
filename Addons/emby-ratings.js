@@ -96,23 +96,22 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		kinopoisk: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/kinopoisk.png',
 		rogerebert: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Roger_Ebert.png'
   };
-  
+
   let currentImdbId = null;
   let currentTmdbData = null;
-  const boxObservers = new WeakMap();
-  
+
   setInterval(scanLinks, 1000);
   scanLinks();
-  
+
   function findImdbIdFromPage() {
     if (currentImdbId) return currentImdbId;
-    
+
     const imdbLink = document.querySelector(
       'a[href*="imdb.com/title/tt"], ' +
       'a.button-link[href*="imdb.com/title/tt"], ' +
       'a.emby-button[href*="imdb.com/title/tt"]'
     );
-    
+
     if (imdbLink) {
       const m = imdbLink.href.match(/imdb\.com\/title\/(tt\d+)/);
       if (m) {
@@ -120,20 +119,17 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
         return m[1];
       }
     }
-    
+
     return null;
   }
-  
-  function getStarBox(node) {
-    return node?.closest('.itemMiscInfo.itemMiscInfo-primary') || 
-           node?.closest('.mediaInfoItems') || 
-           node?.parentElement || null;
-  }
-  
-  function setBuiltInStarsHidden(box, hide) {
-    if (!box) return;
-    const stars  = box.querySelector('.starRatingContainer.mediaInfoItem');
-    const critic = box.querySelector('.mediaInfoItem.mediaInfoCriticRating');
+
+  /**
+   * Hides the built-in star rating and critic rating elements inside a mediaInfo bar.
+   */
+  function setBuiltInStarsHidden(mediaInfoBar, hide) {
+    if (!mediaInfoBar) return;
+    const stars  = mediaInfoBar.querySelector('.starRatingContainer.mediaInfoItem');
+    const critic = mediaInfoBar.querySelector('.mediaInfoItem.mediaInfoCriticRating');
     [stars, critic].forEach(el => {
       if (!el) return;
       if (hide) {
@@ -151,22 +147,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
       }
     });
   }
-  
-  function updateStarsVisibilityFor(container) {
-    if (!container) return;
-    const hasContent =
-      container.childElementCount > 0 ||
-      (container.textContent && container.textContent.trim().length > 0);
-    setBuiltInStarsHidden(getStarBox(container), hasContent);
-  }
-  
-  function watchRatingContainer(container) {
-    setTimeout(() => updateStarsVisibilityFor(container), 0);
-    const obs = new MutationObserver(() => updateStarsVisibilityFor(container));
-    obs.observe(container, { childList: true, subtree: true, characterData: true });
-    container.__ratingsObserver = obs;
-  }
-  
+
   function isInEpisodeListView(element) {
     return !!(
       element.closest('.listItem') ||
@@ -176,86 +157,135 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
       element.closest('.verticalSection-content')
     );
   }
-  
-  function shouldHideRatings(container) {
-    if (container.closest('.cardText-mediaInfo')) {
-      return true;
-    }
-    if (container.closest('.mediaSources')) {
-      return true;
-    }
-    if (container.closest('.sectionTitle')) {
-      return true;
-    }
-    return false;
+
+  /**
+   * Find the detailNameContainer and mediaInfo bar within the same detailTextContainer.
+   * Returns { nameContainer, mediaInfoBar } or null.
+   */
+  function findDetailAnchors(pageView) {
+    if (!pageView) return null;
+
+    // The detailNameContainer
+    const nameContainer = pageView.querySelector('.detailNameContainer');
+    if (!nameContainer) return null;
+
+    // The mediaInfo primary bar (sibling of detailNameContainer inside detailTextContainer)
+    const detailText = nameContainer.closest('.detailTextContainer') ||
+                       nameContainer.closest('.verticalFieldItems');
+    if (!detailText) return null;
+
+    const mediaInfoBar = detailText.querySelector(
+      '.mediaInfo.detail-mediaInfoPrimary'
+    );
+
+    return { nameContainer, mediaInfoBar, detailText };
   }
-  
-  function watchMediaInfoBox(box, type, tmdbId, episodeInfo) {
-    if (boxObservers.has(box)) return;
-    
-    const observer = new MutationObserver((mutations) => {
-      if (!box.querySelector('.mdblist-rating-container')) {
-        const presentRe = '(?:present|now|current|Н\\/В|Н\\.В\\.|н\\/в|н\\.в\\.|по\\s*наст\\.?\\s*времен[ию]?)';
-        const dash = '[–—-]';
-        const isYearish  = t => /^\d{4}$/.test(t) || new RegExp(`^\\d{4}\\s*${dash}\\s*(?:\\d{4}|${presentRe})$`, 'i').test(t);
-        const isRuntime  = t => /^\d+\s*(?:m|min|мин)\b/i.test(t);
-        
-        const items = Array.from(box.querySelectorAll('.mediaInfoItem'));
-        const officialEl = box.querySelector('.mediaInfoItem.mediaInfoText.mediaInfoOfficialRating');
-        const yearEl     = items.find(el => isYearish((el.textContent || '').trim()));
-        const runtimeEl  = items.find(el => isRuntime((el.textContent || '').trim()));
-        const lastItem   = box.querySelector('.mediaInfoItem:last-of-type');
-        const anchor = yearEl || runtimeEl || officialEl || lastItem;
-        
-        if (anchor && !anchor.previousElementSibling?.classList.contains('mdblist-rating-container')) {
-          insert(anchor, type, tmdbId, episodeInfo);
-        }
-      }
+
+  /**
+   * Insert the rating container as its own row between detailNameContainer and mediaInfo bar.
+   */
+  function insertRatingRow(pageView, type, tmdbId, episodeInfo) {
+    if (!pageView) return;
+
+    // Remove any existing rating row in this page view
+    const existing = pageView.querySelector('.mdblist-rating-row');
+    if (existing) {
+      existing.remove();
+    }
+
+    const anchors = findDetailAnchors(pageView);
+    if (!anchors) return;
+
+    const { nameContainer, mediaInfoBar } = anchors;
+
+    // Hide built-in stars in the mediaInfo bar
+    if (mediaInfoBar) {
+      setBuiltInStarsHidden(mediaInfoBar, true);
+    }
+
+    // Create the rating row container
+    const ratingRow = document.createElement('div');
+    ratingRow.className = 'mdblist-rating-row verticalFieldItem detail-lineItem';
+    ratingRow.style.cssText = 'display:flex; align-items:center; flex-wrap:wrap; gap:2px;';
+
+    // The inner container for rating badges
+    const container = document.createElement('div');
+    container.className = 'mdblist-rating-container';
+    container.style.cssText = 'display:inline-flex; align-items:center; flex-wrap:wrap;';
+    ratingRow.appendChild(container);
+
+    // Insert after detailNameContainer, before mediaInfo bar
+    if (mediaInfoBar && mediaInfoBar.parentNode === nameContainer.parentNode) {
+      nameContainer.parentNode.insertBefore(ratingRow, mediaInfoBar);
+    } else {
+      // Fallback: insert right after nameContainer
+      nameContainer.insertAdjacentElement('afterend', ratingRow);
+    }
+
+    // Fetch and populate ratings
+    if (episodeInfo?.isEpisode) {
+      fetchTmdbEpisodeRating(episodeInfo.tvId, episodeInfo.season, episodeInfo.episode, container);
+      return;
+    }
+
+    if (episodeInfo?.isSeason) {
+      fetchTmdbSeasonRating(episodeInfo.tvId, episodeInfo.season, container);
+      return;
+    }
+
+    fetchMDBList(type, tmdbId, container);
+  }
+
+  /**
+   * Also handle inline mediaInfo bars outside the main detail area (e.g. in mediaSources).
+   * These get hidden ratings so they don't show duplicates.
+   */
+  function hideSecondaryRatingContainers(pageView) {
+    if (!pageView) return;
+    pageView.querySelectorAll('.mediaSources .mdblist-rating-container').forEach(c => {
+      c.style.display = 'none';
     });
-    
-    observer.observe(box, { childList: true, subtree: true });
-    boxObservers.set(box, observer);
   }
-  
+
   function scanLinks() {
     document.querySelectorAll('a[href*="imdb.com/title/"], a.button-link[href*="imdb.com/title/"], a.emby-button[href*="imdb.com/title/"]').forEach(a => {
       if (a.dataset.imdbProcessed) return;
       a.dataset.imdbProcessed = 'true';
       const m = a.href.match(/imdb\.com\/title\/(tt\d+)/);
       const newImdbId = m ? m[1] : null;
-      
+
       if (newImdbId && newImdbId !== currentImdbId) {
         currentImdbId = newImdbId;
       }
     });
-    
+
     const tmdbLinks = Array.from(document.querySelectorAll('a[href*="themoviedb.org/"], a.button-link[href*="themoviedb.org/"], a.emby-button[href*="themoviedb.org/"]'))
       .filter(a => {
         if (a.dataset.mdblistProcessed) return false;
         if (isInEpisodeListView(a)) return false;
         return true;
       })
-      .sort((a,b) => {
+      .sort((a, b) => {
         const s = h => /\/episode\//.test(h) ? 2 : (/\/season\//.test(h) ? 1 : 0);
         return s(a.href) - s(b.href);
       });
-    
+
     tmdbLinks.forEach(a => {
       a.dataset.mdblistProcessed = 'true';
       processLink(a);
     });
   }
-  
+
   function processLink(link) {
     const ep = link.href.match(/themoviedb\.org\/tv\/(\d+)\/season\/(\d+)\/episode\/(\d+)/);
     const sn = !ep && link.href.match(/themoviedb\.org\/tv\/(\d+)\/season\/(\d+)(?!\/episode)/);
     const m = link.href.match(/themoviedb\.org\/(movie|tv)\/(\d+)/);
-    
+
     if (!m) return;
-    
+
     const type   = m[1] === 'tv' ? 'show' : 'movie';
     const tmdbId = m[2];
-    
+
     const episodeInfo = ep ? {
       isEpisode: true,
       tvId: ep[1],
@@ -266,72 +296,52 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
       tvId: sn[1],
       season: parseInt(sn[2], 10)
     } : null);
-    
+
     currentTmdbData = { type, tmdbId, episodeInfo };
-    
-    const presentRe = '(?:present|now|current|Н\\/В|Н\\.В\\.|н\\/в|н\\.в\\.|по\\s*наст\\.?\\s*времен[ию]?)';
-    const dash = '[–—-]';
-    const isYearish  = t => /^\d{4}$/.test(t) || new RegExp(`^\\d{4}\\s*${dash}\\s*(?:\\d{4}|${presentRe})$`, 'i').test(t);
-    const isRuntime  = t => /^\d+\s*(?:m|min|мін)\b/i.test(t);
-    
-    document.querySelectorAll('.itemMiscInfo.itemMiscInfo-primary, .mediaInfoItems').forEach(box => {
-      if (isInEpisodeListView(box)) return;
-      if (box.querySelector('.mdblist-rating-container')) return;
-      
-      const items = Array.from(box.querySelectorAll('.mediaInfoItem'));
-      const officialEl = box.querySelector('.mediaInfoItem.mediaInfoText.mediaInfoOfficialRating');
-      const yearEl     = items.find(el => isYearish((el.textContent || '').trim()));
-      const runtimeEl  = items.find(el => isRuntime((el.textContent || '').trim()));
-      const lastItem   = box.querySelector('.mediaInfoItem:last-of-type');
-      const anchor = yearEl || runtimeEl || officialEl || lastItem;
-      
-      if (anchor && !anchor.previousElementSibling?.classList.contains('mdblist-rating-container')) {
-        insert(anchor, type, tmdbId, episodeInfo);
-        watchMediaInfoBox(box, type, tmdbId, episodeInfo);
+
+    // Find the visible item detail page view that contains this link
+    const pageView = link.closest('.view-item-item:not(.hide)') ||
+                     link.closest('[is="emby-scroller"].view-item-item:not(.hide)') ||
+                     link.closest('.page:not(.hide)');
+
+    if (!pageView) return;
+
+    // Check if we already have a rating row for this tmdbId in this view
+    const existingRow = pageView.querySelector('.mdblist-rating-row');
+    if (existingRow) {
+      const existingContainer = existingRow.querySelector('.mdblist-rating-container');
+      if (existingContainer &&
+          existingContainer.dataset.tmdbId === tmdbId &&
+          existingContainer.dataset.type === type) {
+        return; // Already present for same item
       }
+    }
+
+    // Insert the rating row in the proper position
+    insertRatingRow(pageView, type, tmdbId, episodeInfo);
+
+    // Also hide built-in stars in all mediaInfo bars within the page view
+    pageView.querySelectorAll('.mediaInfo.detail-mediaInfoPrimary').forEach(bar => {
+      if (isInEpisodeListView(bar)) return;
+      setBuiltInStarsHidden(bar, true);
     });
+
+    // Hide any old inline rating containers in mediaSources etc.
+    hideSecondaryRatingContainers(pageView);
   }
-  
-  function insert(target, type, tmdbId, episodeInfo) {
-    while (target.previousElementSibling?.classList.contains('mdblist-rating-container')) {
-      const old = target.previousElementSibling;
-      try { old.__ratingsObserver?.disconnect(); } catch {}
-      setBuiltInStarsHidden(getStarBox(old), false);
-      old.remove();
-    }
-    
-    const container = document.createElement('div');
-    container.className = 'mdblist-rating-container';
-    container.style.cssText = 'display:inline-flex; align-items:center; margin-left:3px;';
-    target.insertAdjacentElement('beforebegin', container);
-    
-    if (shouldHideRatings(container)) {
-      container.style.display = 'none';
-    }
-    
-    watchRatingContainer(container);
-    
-    if (episodeInfo?.isEpisode) {
-      fetchTmdbEpisodeRating(episodeInfo.tvId, episodeInfo.season, episodeInfo.episode, container);
-      return;
-    }
-    
-    if (episodeInfo?.isSeason) {
-      fetchTmdbSeasonRating(episodeInfo.tvId, episodeInfo.season, container);
-      return;
-    }
-    
-    fetchMDBList(type, tmdbId, container);
-  }
-  
+
+  // ══════════════════════════════════════════════════════════════════
+  // Data Fetching Functions
+  // ══════════════════════════════════════════════════════════════════
+
   function fetchTmdbEpisodeRating(tvId, season, episode, container) {
     if (!TMDB_API_KEY || TMDB_API_KEY === 'api_key') {
       console.warn('[Emby Ratings] TMDb API key not set');
       return;
     }
-    
+
     const url = `https://api.themoviedb.org/3/tv/${tvId}/season/${season}/episode/${episode}?api_key=${TMDB_API_KEY}`;
-    
+
     GM_xmlhttpRequest({
       method: 'GET',
       url,
@@ -340,14 +350,14 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
         let data;
         try { data = JSON.parse(res.responseText); }
         catch (e) { return; }
-        
+
         const avg  = Number(data.vote_average);
         const cnt  = Number(data.vote_count);
-        
+
         if (!Number.isFinite(avg) || avg <= 0 || !Number.isFinite(cnt) || cnt <= 0) return;
-        
+
         const valueText = avg.toFixed(1);
-        
+
         const img = document.createElement('img');
         img.src = LOGO.tmdb;
         img.alt = 'TMDb';
@@ -355,7 +365,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
         img.title = `TMDb (Episode): ${valueText} - ${cnt} votes`;
         img.style.cssText = 'height:1.0em; margin-right:2px; vertical-align:middle;';
         container.appendChild(img);
-        
+
         const span = document.createElement('span');
         span.textContent = valueText;
         span.style.cssText = 'margin-right:8px; font-size:1em; vertical-align:middle;';
@@ -363,15 +373,15 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
       }
     });
   }
-  
+
   function fetchTmdbSeasonRating(tvId, season, container) {
     if (!TMDB_API_KEY || TMDB_API_KEY === 'api_key') {
       console.warn('[Emby Ratings] TMDb API key not set');
       return;
     }
-    
+
     const url = `https://api.themoviedb.org/3/tv/${tvId}/season/${season}?api_key=${TMDB_API_KEY}`;
-    
+
     GM_xmlhttpRequest({
       method: 'GET',
       url,
@@ -380,14 +390,14 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
         let data;
         try { data = JSON.parse(res.responseText); }
         catch (e) { return; }
-        
+
         const avg = Number(data.vote_average);
         const cnt = Number(data.vote_count);
-        
+
         if (!Number.isFinite(avg) || avg <= 0 || !Number.isFinite(cnt) || cnt <= 0) return;
-        
+
         const valueText = avg.toFixed(1);
-        
+
         const img = document.createElement('img');
         img.src = LOGO.tmdb;
         img.alt = 'TMDb';
@@ -395,7 +405,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
         img.title = `TMDb (Season): ${valueText} - ${cnt} votes`;
         img.style.cssText = 'height:1.0em; margin-right:2px; vertical-align:middle;';
         container.appendChild(img);
-        
+
         const span = document.createElement('span');
         span.textContent = valueText;
         span.style.cssText = 'margin-right:8px; font-size:1em; vertical-align:middle;';
@@ -403,8 +413,12 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
       }
     });
   }
-  
+
   function fetchMDBList(type, tmdbId, container) {
+    // Tag the container so we can detect duplicates
+    container.dataset.tmdbId = tmdbId;
+    container.dataset.type = type;
+
     GM_xmlhttpRequest({
       method: 'GET',
       url: `https://api.mdblist.com/tmdb/${type}/${tmdbId}?apikey=${MDBLIST_API_KEY}`,
@@ -413,27 +427,26 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
         let data;
         try { data = JSON.parse(res.responseText); }
         catch (e) { return console.error('[Emby Ratings] MDBList JSON error:', e); }
-        
+
         container.dataset.originalTitle = data.original_title || data.title || '';
         container.dataset.year          = data.year || '';
-        
-        // Check manual overrides for this tmdbId
+
         const isCertifiedFreshOverride = CERTIFIED_FRESH_OVERRIDES.includes(String(tmdbId));
         const isVerifiedHotOverride    = VERIFIED_HOT_OVERRIDES.includes(String(tmdbId));
-        
-        // ── First pass: collect all scores & votes for special logo decisions ──
+
+        // ── First pass: collect scores for special logo decisions ──
         let metacriticScore = null;
         let metacriticVotes = null;
         let tomatoesScore   = null;
         let tomatoesVotes   = null;
         let audienceScore   = null;
         let audienceVotes   = null;
-        
+
         if (Array.isArray(data.ratings)) {
           data.ratings.forEach(r => {
             if (r.value == null) return;
             const key = r.source.toLowerCase();
-            
+
             if (key === 'metacritic') {
               metacriticScore = r.value;
               metacriticVotes = r.votes;
@@ -447,19 +460,18 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
               audienceVotes = r.votes;
             }
           });
-          
-          // ── Second pass: render all ratings with correct logos ──
+
+          // ── Second pass: render all ratings ──
           data.ratings.forEach(r => {
             if (r.value == null) return;
-            
+
             let key = r.source.toLowerCase().replace(/\s+/g, '_');
-            
+
             // ── Rotten Tomatoes Critics ──
             if (key === 'tomatoes') {
               if (r.value < 60) {
                 key = 'tomatoes_rotten';
               } else if (isCertifiedFreshOverride || (tomatoesScore >= 75 && tomatoesVotes >= 80)) {
-                // Certified Fresh: manual override OR score >= 75 AND votes >= 80
                 key = 'tomatoes_certified';
               } else {
                 key = 'tomatoes';
@@ -470,7 +482,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
               if (r.value < 60) {
                 key = 'audience_rotten';
               } else if (isVerifiedHotOverride || (audienceScore >= 90 && audienceVotes >= 500)) {
-                // Verified Hot: manual override OR score >= 90% AND >= 500 verified ratings
                 key = 'rotten_ver';
               } else {
                 key = 'audience';
@@ -484,12 +495,12 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
             else if (key.includes('metacritic') && key.includes('user')) key = 'metacriticus';
             else if (key.includes('trakt')) key = 'trakt';
             else if (key.includes('letterboxd')) key = 'letterboxd';
-			else if (key.includes('roger') || key.includes('ebert')) key = 'rogerebert';
+            else if (key.includes('roger') || key.includes('ebert')) key = 'rogerebert';
             else if (key.includes('myanimelist')) key = 'myanimelist';
-            
+
             const logoUrl = LOGO[key];
             if (!logoUrl) return;
-            
+
             const img = document.createElement('img');
             img.src = logoUrl;
             img.alt = r.source;
@@ -497,21 +508,21 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
             img.dataset.source = key;
             img.style.cssText = 'height:1.0em; margin-right:2px; vertical-align:middle;';
             container.appendChild(img);
-            
+
             const span = document.createElement('span');
             span.textContent = r.value;
             span.style.cssText = 'margin-right:8px; font-size:1em; vertical-align:middle;';
             container.appendChild(span);
           });
         }
-        
-        // ── AniList (still uses IMDb for lookup, but called after render) ──
+
+        // ── AniList ──
         const imdbId = findImdbIdFromPage();
         if (imdbId) {
           fetchAniListRating(imdbId, container);
         }
 
-		// ── Kinopoisk ── ← NEU: diesen Block hinzufügen
+        // ── Kinopoisk ──
         const title = container.dataset.originalTitle;
         const year  = parseInt(container.dataset.year, 10);
         if (title && year) {
@@ -520,14 +531,18 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
       }
     });
   }
-  
+
+  // ══════════════════════════════════════════════════════════════════
+  // AniList
+  // ══════════════════════════════════════════════════════════════════
+
   function getAnilistId(imdbId, cb) {
     const sparql = `
       SELECT ?anilist WHERE {
         ?item wdt:P345 "${imdbId}" .
         ?item wdt:P8729 ?anilist .
       } LIMIT 1`;
-    
+
     GM_xmlhttpRequest({
       method: 'GET',
       url: 'https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparql),
@@ -542,7 +557,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
       onerror: () => cb(null)
     });
   }
-  
+
   function fetchAniListRating(imdbId, container) {
     getAnilistId(imdbId, id => {
       if (id) {
@@ -554,7 +569,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
       }
     });
   }
-  
+
   function queryAniListById(id, container) {
     const query = `
       query($id:Int){
@@ -562,7 +577,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
           id meanScore
         }
       }`;
-    
+
     GM_xmlhttpRequest({
       method: 'POST',
       url: 'https://graphql.anilist.co',
@@ -578,7 +593,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
       }
     });
   }
-  
+
   function queryAniListBySearch(title, year, container) {
     const query = `
       query($search:String,$startDate:FuzzyDateInt,$endDate:FuzzyDateInt){
@@ -591,13 +606,13 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
           id meanScore title { romaji english native } startDate { year }
         }
       }`;
-    
+
     const vars = {
       search:    title,
       startDate: parseInt(`${year}0101`, 10),
       endDate:   parseInt(`${year+1}0101`, 10)
     };
-    
+
     GM_xmlhttpRequest({
       method: 'POST',
       url: 'https://graphql.anilist.co',
@@ -619,7 +634,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
       }
     });
   }
-  
+
   function appendAniList(container, mediaId, score) {
     const img = document.createElement('img');
     img.src = LOGO.anilist;
@@ -628,55 +643,59 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
     img.dataset.source = 'anilist';
     img.style.cssText = 'height:1.0em; margin-right:2px; vertical-align:middle;';
     container.appendChild(img);
-    
+
     const span = document.createElement('span');
     span.textContent = score;
     span.style.cssText = 'margin-right:8px; font-size:1em; vertical-align:middle;';
     container.appendChild(span);
   }
 
-	function fetchKinopoiskRating(title, year, type, container) {
-	  if (!KINOPOISK_API_KEY || KINOPOISK_API_KEY === 'DEIN_KEY_HIER') {
-		console.warn('[Emby Ratings] Kinopoisk API key not set');
-		return;
-	  }
+  // ══════════════════════════════════════════════════════════════════
+  // Kinopoisk
+  // ══════════════════════════════════════════════════════════════════
 
-	  const url = `https://kinopoiskapiunofficial.tech/api/v2.2/films?keyword=${encodeURIComponent(title)}&yearFrom=${year}&yearTo=${year}`;
+  function fetchKinopoiskRating(title, year, type, container) {
+    if (!KINOPOISK_API_KEY || KINOPOISK_API_KEY === 'DEIN_KEY_HIER') {
+      console.warn('[Emby Ratings] Kinopoisk API key not set');
+      return;
+    }
 
-	  GM_xmlhttpRequest({
-		method: 'GET',
-		url,
-		headers: {
-		  'X-API-KEY': KINOPOISK_API_KEY,
-		  'Content-Type': 'application/json'
-		},
-		onload(res) {
-		  if (res.status !== 200) return console.warn('[Emby Ratings] KP status:', res.status);
-		  let data;
-		  try { data = JSON.parse(res.responseText); }
-		  catch (e) { return console.error('[Emby Ratings] KP JSON parse error:', e); }
+    const url = `https://kinopoiskapiunofficial.tech/api/v2.2/films?keyword=${encodeURIComponent(title)}&yearFrom=${year}&yearTo=${year}`;
 
-		  const list = data.items || data.films || [];
-		  if (!list.length) return console.warn('[Emby Ratings] KP no items for', title);
+    GM_xmlhttpRequest({
+      method: 'GET',
+      url,
+      headers: {
+        'X-API-KEY': KINOPOISK_API_KEY,
+        'Content-Type': 'application/json'
+      },
+      onload(res) {
+        if (res.status !== 200) return console.warn('[Emby Ratings] KP status:', res.status);
+        let data;
+        try { data = JSON.parse(res.responseText); }
+        catch (e) { return console.error('[Emby Ratings] KP JSON parse error:', e); }
 
-		  const desired = type === 'show' ? 'TV_SERIES' : 'FILM';
-		  const item = list.find(i => i.type === desired) || list[0];
-		  if (item.ratingKinopoisk == null) return;
+        const list = data.items || data.films || [];
+        if (!list.length) return console.warn('[Emby Ratings] KP no items for', title);
 
-		  const img = document.createElement('img');
-		  img.src = LOGO.kinopoisk;
-		  img.alt = 'Kinopoisk';
-		  img.title = `Kinopoisk: ${item.ratingKinopoisk}`;
-		  img.dataset.source = 'kinopoisk';
-		  img.style.cssText = 'height:1.0em; margin-right:2px; vertical-align:middle;';
-		  container.appendChild(img);
+        const desired = type === 'show' ? 'TV_SERIES' : 'FILM';
+        const item = list.find(i => i.type === desired) || list[0];
+        if (item.ratingKinopoisk == null) return;
 
-		  const span = document.createElement('span');
-		  span.textContent = item.ratingKinopoisk;
-		  span.style.cssText = 'margin-right:8px; font-size:1em; vertical-align:middle;';
-		  container.appendChild(span);
-		}
-	  });
-	}
+        const img = document.createElement('img');
+        img.src = LOGO.kinopoisk;
+        img.alt = 'Kinopoisk';
+        img.title = `Kinopoisk: ${item.ratingKinopoisk}`;
+        img.dataset.source = 'kinopoisk';
+        img.style.cssText = 'height:1.0em; margin-right:2px; vertical-align:middle;';
+        container.appendChild(img);
+
+        const span = document.createElement('span');
+        span.textContent = item.ratingKinopoisk;
+        span.style.cssText = 'margin-right:8px; font-size:1em; vertical-align:middle;';
+        container.appendChild(span);
+      }
+    });
+  }
 
 })();
