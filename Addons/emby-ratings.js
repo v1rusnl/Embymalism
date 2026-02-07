@@ -2,8 +2,8 @@
  * Emby Ratings Integration
  * Adapted Jellyfin JS snippet -> THX to https://github.com/Druidblack/jellyfin_ratings
  * Shows IMDb, Rotten Tomatoes, Metacritic, Trakt, Letterboxd, AniList
- * Paste your MDBList and TMDB API keys into line 53+54
- * Manual Overrides for RT can be set in line 62 ff.
+ * Paste your API keys into line 32-34, min. one key is mandatory
+ * Manual Overrides for RT can be set in line 41 ff.
  * Add <script src="emby-ratings.js"></script> in index.html before </body>
  */
 
@@ -25,12 +25,13 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
     });
   };
 }
-
+	
 (function() {
   'use strict';
   
   const MDBLIST_API_KEY = 'YOUR_API_KEY';
   const TMDB_API_KEY    = 'YOUR_API_KEY';
+  const KINOPOISK_API_KEY = 'YOUR_API_KEY';
   
   // ══════════════════════════════════════════════════════════════════
   // MANUELLE OVERRIDES: TMDb-IDs für erzwungene Badges
@@ -91,7 +92,9 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
         trakt: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Trakt.png',
         letterboxd: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/letterboxd.png',
         myanimelist: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/mal.png',
-        anilist: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/anilist.png'
+        anilist: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/anilist.png',
+		kinopoisk: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/kinopoisk.png',
+		rogerebert: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Roger_Ebert.png'
   };
   
   let currentImdbId = null;
@@ -481,6 +484,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
             else if (key.includes('metacritic') && key.includes('user')) key = 'metacriticus';
             else if (key.includes('trakt')) key = 'trakt';
             else if (key.includes('letterboxd')) key = 'letterboxd';
+			else if (key.includes('roger') || key.includes('ebert')) key = 'rogerebert';
             else if (key.includes('myanimelist')) key = 'myanimelist';
             
             const logoUrl = LOGO[key];
@@ -505,6 +509,13 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
         const imdbId = findImdbIdFromPage();
         if (imdbId) {
           fetchAniListRating(imdbId, container);
+        }
+
+		// ── Kinopoisk ── ← NEU: diesen Block hinzufügen
+        const title = container.dataset.originalTitle;
+        const year  = parseInt(container.dataset.year, 10);
+        if (title && year) {
+          fetchKinopoiskRating(title, year, type, container);
         }
       }
     });
@@ -623,4 +634,49 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
     span.style.cssText = 'margin-right:8px; font-size:1em; vertical-align:middle;';
     container.appendChild(span);
   }
+
+	function fetchKinopoiskRating(title, year, type, container) {
+	  if (!KINOPOISK_API_KEY || KINOPOISK_API_KEY === 'DEIN_KEY_HIER') {
+		console.warn('[Emby Ratings] Kinopoisk API key not set');
+		return;
+	  }
+
+	  const url = `https://kinopoiskapiunofficial.tech/api/v2.2/films?keyword=${encodeURIComponent(title)}&yearFrom=${year}&yearTo=${year}`;
+
+	  GM_xmlhttpRequest({
+		method: 'GET',
+		url,
+		headers: {
+		  'X-API-KEY': KINOPOISK_API_KEY,
+		  'Content-Type': 'application/json'
+		},
+		onload(res) {
+		  if (res.status !== 200) return console.warn('[Emby Ratings] KP status:', res.status);
+		  let data;
+		  try { data = JSON.parse(res.responseText); }
+		  catch (e) { return console.error('[Emby Ratings] KP JSON parse error:', e); }
+
+		  const list = data.items || data.films || [];
+		  if (!list.length) return console.warn('[Emby Ratings] KP no items for', title);
+
+		  const desired = type === 'show' ? 'TV_SERIES' : 'FILM';
+		  const item = list.find(i => i.type === desired) || list[0];
+		  if (item.ratingKinopoisk == null) return;
+
+		  const img = document.createElement('img');
+		  img.src = LOGO.kinopoisk;
+		  img.alt = 'Kinopoisk';
+		  img.title = `Kinopoisk: ${item.ratingKinopoisk}`;
+		  img.dataset.source = 'kinopoisk';
+		  img.style.cssText = 'height:1.0em; margin-right:2px; vertical-align:middle;';
+		  container.appendChild(img);
+
+		  const span = document.createElement('span');
+		  span.textContent = item.ratingKinopoisk;
+		  span.style.cssText = 'margin-right:8px; font-size:1em; vertical-align:middle;';
+		  container.appendChild(span);
+		}
+	  });
+	}
+
 })();
