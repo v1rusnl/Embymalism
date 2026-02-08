@@ -994,8 +994,9 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		  }
 
 		  const pathSegment = type === 'show' ? 'series' : 'film';
-		  const url = `https://YOUR-CORS-PROXY-BASE-URL/https://www.allocine.fr/${pathSegment}/fichefilm_gen_cfilm=${allocineId}.html`;
-
+		  const fileSegment = type === 'show' ? `ficheserie_gen_cserie=${allocineId}` : `fichefilm_gen_cfilm=${allocineId}`;
+		  const url = `https://YOUR-CORS-PROXY-BASE-URL/https://www.allocine.fr/${pathSegment}/${fileSegment}.html`;
+	
 		  GM_xmlhttpRequest({
 			method: 'GET',
 			url,
