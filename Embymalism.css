@@ -1,4 +1,4 @@
-/* ===== Embymalism_4.9.3.0 20260207 ===== */
+/* ===== Embymalism_4.9.3.0 20260208 ===== */
 
 @import url('https://fonts.googleapis.com/css2?family=Sofia+Sans:ital,wght@0,1..1000;1,1..1000&display=swap');
 
@@ -822,11 +822,20 @@ div.peopleSection .coveredImage {
   height: 5em !important;
 }
 
-.topDetailsContainer .overview-text {
-  max-width: 850px;
-  font-size: 0.85em;
-  line-height: 1.65;
-  max-height: 45px;
+@media (min-width: 48em) {
+  .topDetailsContainer .overview-text {
+    max-width: 850px;
+    font-size: 0.85em;
+    line-height: 1.65;
+    max-height: 45px;
+  }
+}
+
+@media (max-width: 47em) {
+  div.verticalFieldItem.overview-container.flex.flex-direction-row.align-items-flex-end.focuscontainer-x.detail-lineItem.detailText-moveup.focusable {
+    -webkit-flex-direction: column !important;
+    flex-direction: column !important;
+  }
 }
 
 .topDetailsContainer .overview-main {
@@ -2307,8 +2316,8 @@ img.recordingDialog-img {
   .topDetailsContainer .verticalFieldItem.tagline,
   .topDetailsContainer .verticalFieldItem.overview-container,
   .topDetailsContainer .verticalFieldItem.directors {
-    max-width: 48% !important;
-    width: 48% !important;
+    max-width: 55% !important;
+    width: 55% !important;
   }
   
   .topDetailsContainer .verticalFieldItem.trackSelections {
