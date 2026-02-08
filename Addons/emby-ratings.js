@@ -1,12 +1,15 @@
 /*!
  * Emby Ratings Integration
  * Adapted Jellyfin JS snippet -> THX to https://github.com/Druidblack/jellyfin_ratings
- * Shows IMDb, Rotten Tomatoes, Metacritic, Trakt, Letterboxd, AniList
+ * Shows IMDb, Rotten Tomatoes, Metacritic, Trakt, Letterboxd, AniList, RogerEbert, Kinopoisk, Allociné
  *
- * Paste your API keys into line 39-41, min. one key is mandatory
- * For Allociné to work, you need a reliant CORS proxy, e.g. https://github.com/obeone/simple-cors-proxy and you need to set its base URL in line 997
- * Set Ratings cache duration to minimize API calls in line 42 -> default=24h
- * Manual Overrides for RT can be set in line 169 ff.
+ * Paste your API keys into line 45-47, min. MDBList key is mandatory to get most ratings; if no key is used, leave the value field empty
+ *
+ * For Rotten Tomatoes Badge "Verified Hot" to work automatically, you need a reliant CORS proxy, e.g. https://github.com/obeone/simple-cors-proxy and you need to set its base URL in line 525
+ * For Allociné to work, you need a reliant CORS proxy, e.g. https://github.com/obeone/simple-cors-proxy and you need to set its base URL in line 1249
+ *
+ * Set Ratings cache duration to minimize API calls in line 48 -> default=24h
+ *
  * Paste your modified emby.ratings.js into /system/dashboard-ui/ 
  * Add <script src="emby-ratings.js"></script> in index.html before </body>
  *
@@ -39,9 +42,9 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 (function() {
 	'use strict';
 	  
-	const MDBLIST_API_KEY = 'YOUR-API-KEY';
-	const TMDB_API_KEY    = 'YOUR-API-KEY';
-	const KINOPOISK_API_KEY = 'YOUR-API-KEY';
+	const MDBLIST_API_KEY = 'YOUR_API_KEY';
+	const TMDB_API_KEY    = 'YOUR_API_KEY';
+	const KINOPOISK_API_KEY = 'YOUR_API_KEY';
 	const CACHE_TTL_HOURS = 24; // Cache duration in Hours
 	  
 	// ══════════════════════════════════════════════════════════════════
@@ -52,11 +55,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	const CACHE_PREFIX = 'emby_ratings_';
 
 	const RatingsCache = {
-		/**
-		 * Holt einen gecachten Wert. Gibt null zurück wenn nicht vorhanden oder abgelaufen.
-		 * @param {string} key - Cache-Schlüssel (ohne Prefix)
-		 * @returns {*|null} - Die gecachten Daten oder null
-		 */
 		get(key) {
 		  try {
 			const raw = localStorage.getItem(CACHE_PREFIX + key);
@@ -65,7 +63,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			const entry = JSON.parse(raw);
 			if (!entry || !entry.timestamp || !entry.data) return null;
 
-			// Prüfe ob der Eintrag abgelaufen ist
 			if (Date.now() - entry.timestamp > CACHE_TTL_MS) {
 			  localStorage.removeItem(CACHE_PREFIX + key);
 			  return null;
@@ -78,11 +75,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		  }
 		},
 
-		/**
-		 * Speichert einen Wert im Cache mit aktuellem Zeitstempel.
-		 * @param {string} key - Cache-Schlüssel (ohne Prefix)
-		 * @param {*} data - Die zu cachenden Daten
-		 */
 		set(key, data) {
 		  try {
 			const entry = {
@@ -92,7 +84,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			localStorage.setItem(CACHE_PREFIX + key, JSON.stringify(entry));
 		  } catch (e) {
 			console.warn('[Emby Ratings Cache] Fehler beim Schreiben:', key, e);
-			// Bei QuotaExceededError: alte Einträge bereinigen und nochmal versuchen
 			if (e.name === 'QuotaExceededError') {
 			  this.cleanup(true);
 			  try {
@@ -107,10 +98,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		  }
 		},
 
-		/**
-		 * Bereinigt abgelaufene Cache-Einträge.
-		 * @param {boolean} force - Wenn true, lösche die älteste Hälfte aller Einträge
-		 */
 		cleanup(force = false) {
 		  const keysToCheck = [];
 		  for (let i = 0; i < localStorage.length; i++) {
@@ -121,7 +108,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		  }
 
 		  if (force) {
-			// Bei Speicherplatzmangel: sortiere nach Alter, lösche älteste Hälfte
 			const entries = keysToCheck.map(k => {
 			  try {
 				const raw = localStorage.getItem(k);
@@ -140,7 +126,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			return;
 		  }
 
-		  // Normaler Cleanup: nur abgelaufene Einträge löschen
 		  let removed = 0;
 		  keysToCheck.forEach(k => {
 			try {
@@ -167,12 +152,13 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	RatingsCache.cleanup();
 	  
 	// ══════════════════════════════════════════════════════════════════
-	// MANUELLE OVERRIDES: TMDb-IDs für erzwungene Badges
+	// MANUAL OVERRIDES (fallback if RT scrape fails or no CORS proxy is set)
+    // These are only used as a fallback if no RT slug
+    // is found in Wikidata or the CORS proxy is unavailable.
 	// ══════════════════════════════════════════════════════════════════
 	const CERTIFIED_FRESH_OVERRIDES = [
 		// '550',      // Fight Club
 		// '680',      // Pulp Fiction
-		// '13',       // Forrest Gump
 	];
 	  
 	const VERIFIED_HOT_OVERRIDES = [
@@ -183,7 +169,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		'1088166', // Relay
 		'1007734', // Nobody 2
 		'1078605', // Weapons
-		'1100988', // 28 Years Later
+		'1272837', // 28 Years Later - The Bone Temple
 		'1022787', // Elio
 		'575265', // Mission: Impossible - The Final Reckoning
 		'574475', // Final Destination Bloodlines
@@ -470,6 +456,179 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	}
 
 	// ══════════════════════════════════════════════════════════════════
+	// Rotten Tomatoes Scraping (Certified Fresh + Verified Hot)
+	// via Wikidata P1258 -> CORS Proxy -> parse embedded JSON
+	// ══════════════════════════════════════════════════════════════════
+
+	function getRTSlug(imdbId) {
+		return new Promise((resolve) => {
+			if (!imdbId) { resolve(null); return; }
+
+			const cacheKey = `rt_slug_${imdbId}`;
+			const cached = RatingsCache.get(cacheKey);
+			if (cached !== null) {
+				resolve(cached.slug);
+				return;
+			}
+
+			// Wikidata Property P1258 = Rotten Tomatoes ID (e.g. "m/movie_name" or "tv/show_name")
+			const sparql = `
+				SELECT ?rtId WHERE {
+					?item wdt:P345 "${imdbId}" .
+					?item wdt:P1258 ?rtId .
+				} LIMIT 1`;
+
+			GM_xmlhttpRequest({
+				method: 'GET',
+				url: 'https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparql),
+				onload(res) {
+					if (res.status !== 200) { resolve(null); return; }
+					let json;
+					try { json = JSON.parse(res.responseText); }
+					catch { resolve(null); return; }
+					const b = json.results.bindings;
+					const slug = b.length && b[0].rtId?.value ? b[0].rtId.value : null;
+
+					RatingsCache.set(cacheKey, { slug: slug });
+					resolve(slug);
+				},
+				onerror: () => resolve(null)
+			});
+		});
+	}
+
+	/**
+	 * Scrapes the RT page via CORS proxy and returns both certified statuses.
+	 * @param {string} imdbId
+	 * @param {string} type - 'movie' or 'show'
+	 * @returns {Promise<{criticsCertified: boolean|null, audienceCertified: boolean|null}>}
+	 */
+	function fetchRTCertifiedStatus(imdbId, type) {
+		return new Promise((resolve) => {
+			if (!imdbId) { resolve({ criticsCertified: null, audienceCertified: null }); return; }
+
+			const cacheKey = `rt_certified_${type}_${imdbId}`;
+			const cached = RatingsCache.get(cacheKey);
+			if (cached !== null) {
+				resolve(cached);
+				return;
+			}
+
+			getRTSlug(imdbId).then(slug => {
+				if (!slug) {
+					const result = { criticsCertified: null, audienceCertified: null };
+					RatingsCache.set(cacheKey, result);
+					resolve(result);
+					return;
+				}
+
+				const rtUrl = `https://YOUR-CORS-SERVER-BASEURL/https://www.rottentomatoes.com/${slug}`;
+
+				GM_xmlhttpRequest({
+					method: 'GET',
+					url: rtUrl,
+					onload(res) {
+						if (res.status !== 200) {
+							console.warn('[Emby Ratings] RT scrape failed:', res.status, slug);
+							const result = { criticsCertified: null, audienceCertified: null };
+							RatingsCache.set(cacheKey, result);
+							resolve(result);
+							return;
+						}
+
+						const html = res.responseText;
+						let criticsCertified = null;
+						let audienceCertified = null;
+
+						// ── Strategy 1: Parse the embedded media-scorecard JSON (most reliable) ──
+						const jsonMatch = html.match(
+							/<script[^>]*id="media-scorecard-json"[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/
+						);
+						if (jsonMatch) {
+							try {
+								const scoreData = JSON.parse(jsonMatch[1]);
+
+								// Critics: criticsScore.certified
+								if (scoreData.criticsScore && typeof scoreData.criticsScore.certified === 'boolean') {
+									criticsCertified = scoreData.criticsScore.certified;
+								}
+
+								// Audience: audienceScore.certified
+								if (scoreData.audienceScore && typeof scoreData.audienceScore.certified === 'boolean') {
+									audienceCertified = scoreData.audienceScore.certified;
+								}
+
+								console.log(`[Emby Ratings] RT JSON parsed for ${slug}: critics=${criticsCertified}, audience=${audienceCertified}`);
+							} catch (e) {
+								console.warn('[Emby Ratings] RT JSON parse error:', e);
+							}
+						}
+
+						// ── Strategy 2: Fallback - parse HTML tag attributes ──
+						if (criticsCertified === null) {
+							const criticsTagMatch = html.match(
+								/<score-icon-critics\s[^>]*certified="(true|false)"[^>]*/
+							);
+							if (criticsTagMatch) {
+								criticsCertified = criticsTagMatch[1] === 'true';
+							}
+						}
+
+						if (audienceCertified === null) {
+							const audienceTagMatch = html.match(
+								/<score-icon-audience\s[^>]*certified="(true|false)"[^>]*/
+							);
+							if (audienceTagMatch) {
+								audienceCertified = audienceTagMatch[1] === 'true';
+							}
+						}
+
+						// ── Strategy 3: Fallback - data-json attribute variant ──
+						if (criticsCertified === null || audienceCertified === null) {
+							const altJsonMatch = html.match(
+								/data-json="mediaScorecard"[^>]*>([\s\S]*?)<\/script>/
+							);
+							if (altJsonMatch) {
+								try {
+									const altData = JSON.parse(altJsonMatch[1]);
+									if (criticsCertified === null && altData.criticsScore?.certified != null) {
+										criticsCertified = altData.criticsScore.certified === true;
+									}
+									if (audienceCertified === null && altData.audienceScore?.certified != null) {
+										audienceCertified = altData.audienceScore.certified === true;
+									}
+								} catch (e) { /* ignore */ }
+							}
+						}
+
+						// ── Strategy 4: mpscall variable for critics certified_fresh ──
+						if (criticsCertified === null) {
+							const mpscallMatch = html.match(/"cag\[certified_fresh\]"\s*:\s*"(\d)"/);
+							if (mpscallMatch) {
+								criticsCertified = mpscallMatch[1] === '1';
+							}
+						}
+
+						const result = {
+							criticsCertified: criticsCertified,
+							audienceCertified: audienceCertified
+						};
+
+						console.log(`[Emby Ratings] RT Certified for ${slug}:`, result);
+						RatingsCache.set(cacheKey, result);
+						resolve(result);
+					},
+					onerror() {
+						const result = { criticsCertified: null, audienceCertified: null };
+						RatingsCache.set(cacheKey, result);
+						resolve(result);
+					}
+				});
+			});
+		});
+	}
+
+	// ══════════════════════════════════════════════════════════════════
 	// Data Fetching Functions (with Caching)
 	// ══════════════════════════════════════════════════════════════════
 
@@ -505,7 +664,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			const valueText = avg.toFixed(1);
 			const titleText = `TMDb (Episode): ${valueText} - ${cnt} votes`;
 
-			// Cache the result
 			RatingsCache.set(cacheKey, {
 			  badges: [{ logoKey: 'tmdb', alt: 'TMDb', title: titleText, value: valueText }]
 			});
@@ -563,15 +721,11 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		const cacheKey = `mdblist_${type}_${tmdbId}`;
 		const cached = RatingsCache.get(cacheKey);
 		if (cached) {
-		  // Restore dataset values from cache
 		  container.dataset.originalTitle = cached.originalTitle || '';
 		  container.dataset.year = cached.year || '';
 
-		  // Render MDBList badges
 		  renderCachedRatings(cached, container);
 
-		  // Still need to fetch supplementary ratings (AniList, Kinopoisk, Allociné)
-		  // These have their own caches
 		  const imdbId = findImdbIdFromPage();
 		  if (imdbId) {
 			fetchAniListRating(imdbId, container);
@@ -606,7 +760,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			const isCertifiedFreshOverride = CERTIFIED_FRESH_OVERRIDES.includes(String(tmdbId));
 			const isVerifiedHotOverride    = VERIFIED_HOT_OVERRIDES.includes(String(tmdbId));
 
-			// Collect scores for special logo decisions
+			// Collect scores for heuristic fallback decisions
 			let metacriticScore = null;
 			let metacriticVotes = null;
 			let tomatoesScore   = null;
@@ -616,7 +770,14 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 
 			const badgesToCache = [];
 
+			// Track the RT badge elements for async upgrade
+			let criticsBadgeImg = null;
+			let criticsBadgeCacheIndex = -1;
+			let audienceBadgeImg = null;
+			let audienceBadgeCacheIndex = -1;
+
 			if (Array.isArray(data.ratings)) {
+			  // First pass: collect scores
 			  data.ratings.forEach(r => {
 				if (r.value == null) return;
 				const key = r.source.toLowerCase();
@@ -635,24 +796,31 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 				}
 			  });
 
+			  // Second pass: render badges
 			  data.ratings.forEach(r => {
 				if (r.value == null) return;
 
 				let key = r.source.toLowerCase().replace(/\s+/g, '_');
+				let isCriticsBadge = false;
+				let isAudienceBadge = false;
 
 				if (key === 'tomatoes') {
+				  isCriticsBadge = true;
 				  if (r.value < 60) {
 					key = 'tomatoes_rotten';
 				  } else if (isCertifiedFreshOverride || (tomatoesScore >= 75 && tomatoesVotes >= 80)) {
+					// Heuristic fallback: assume certified fresh
 					key = 'tomatoes_certified';
 				  } else {
 					key = 'tomatoes';
 				  }
 				}
 				else if (key.includes('popcorn') || key.includes('audience')) {
+				  isAudienceBadge = true;
 				  if (r.value < 60) {
 					key = 'audience_rotten';
 				  } else if (isVerifiedHotOverride || (audienceScore >= 90 && audienceVotes >= 500)) {
+					// Heuristic fallback: assume verified hot
 					key = 'rotten_ver';
 				  } else {
 					key = 'audience';
@@ -681,18 +849,105 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 				});
 
 				appendRatingBadge(container, key, r.source, titleText, r.value);
+
+				// Track the badge img elements for potential async upgrade
+				const allImgs = container.querySelectorAll('img[data-source]');
+				const lastImg = allImgs[allImgs.length - 1];
+
+				if (isCriticsBadge && r.value >= 60) {
+				  criticsBadgeImg = lastImg;
+				  criticsBadgeCacheIndex = badgesToCache.length - 1;
+				}
+				if (isAudienceBadge && r.value >= 60) {
+				  audienceBadgeImg = lastImg;
+				  audienceBadgeCacheIndex = badgesToCache.length - 1;
+				}
 			  });
 			}
 
-			// Cache the MDBList results
-			RatingsCache.set(cacheKey, {
-			  originalTitle: data.original_title || data.title || '',
-			  year: data.year || '',
-			  badges: badgesToCache
-			});
-
-			// Supplementary ratings (each with their own cache)
+			// ── Async RT scraping to correct Certified Fresh + Verified Hot ──
 			const imdbId = findImdbIdFromPage();
+
+			const needsRTScrape =
+			  imdbId &&
+			  ((criticsBadgeImg && tomatoesScore >= 60) ||
+			   (audienceBadgeImg && audienceScore >= 60));
+
+			if (needsRTScrape) {
+			  fetchRTCertifiedStatus(imdbId, type).then(rtStatus => {
+				let cacheUpdated = false;
+
+				// ── Update Critics badge ──
+				if (criticsBadgeImg && tomatoesScore >= 60 && rtStatus.criticsCertified !== null) {
+				  if (rtStatus.criticsCertified === true) {
+					// RT says Certified Fresh → upgrade
+					if (criticsBadgeImg.dataset.source !== 'tomatoes_certified') {
+					  criticsBadgeImg.src = LOGO.tomatoes_certified;
+					  criticsBadgeImg.dataset.source = 'tomatoes_certified';
+					  if (criticsBadgeCacheIndex >= 0) {
+						badgesToCache[criticsBadgeCacheIndex].logoKey = 'tomatoes_certified';
+					  }
+					  cacheUpdated = true;
+					  console.log(`[Emby Ratings] Upgraded critics badge to Certified Fresh for TMDb ${tmdbId}`);
+					}
+				  } else {
+					// RT says NOT Certified Fresh → downgrade if heuristic was wrong
+					if (criticsBadgeImg.dataset.source === 'tomatoes_certified') {
+					  criticsBadgeImg.src = LOGO.tomatoes;
+					  criticsBadgeImg.dataset.source = 'tomatoes';
+					  if (criticsBadgeCacheIndex >= 0) {
+						badgesToCache[criticsBadgeCacheIndex].logoKey = 'tomatoes';
+					  }
+					  cacheUpdated = true;
+					  console.log(`[Emby Ratings] Downgraded critics badge from Certified Fresh for TMDb ${tmdbId}`);
+					}
+				  }
+				}
+
+				// ── Update Audience badge ──
+				if (audienceBadgeImg && audienceScore >= 60 && rtStatus.audienceCertified !== null) {
+				  if (rtStatus.audienceCertified === true) {
+					// RT says Verified Hot → upgrade
+					if (audienceBadgeImg.dataset.source !== 'rotten_ver') {
+					  audienceBadgeImg.src = LOGO.rotten_ver;
+					  audienceBadgeImg.dataset.source = 'rotten_ver';
+					  if (audienceBadgeCacheIndex >= 0) {
+						badgesToCache[audienceBadgeCacheIndex].logoKey = 'rotten_ver';
+					  }
+					  cacheUpdated = true;
+					  console.log(`[Emby Ratings] Upgraded audience badge to Verified Hot for TMDb ${tmdbId}`);
+					}
+				  } else {
+					// RT says NOT Verified Hot → downgrade if heuristic was wrong
+					if (audienceBadgeImg.dataset.source === 'rotten_ver') {
+					  audienceBadgeImg.src = LOGO.audience;
+					  audienceBadgeImg.dataset.source = 'audience';
+					  if (audienceBadgeCacheIndex >= 0) {
+						badgesToCache[audienceBadgeCacheIndex].logoKey = 'audience';
+					  }
+					  cacheUpdated = true;
+					  console.log(`[Emby Ratings] Downgraded audience badge from Verified Hot for TMDb ${tmdbId}`);
+					}
+				  }
+				}
+
+				// Save cache (always, to ensure first-load also caches)
+				RatingsCache.set(cacheKey, {
+				  originalTitle: data.original_title || data.title || '',
+				  year: data.year || '',
+				  badges: badgesToCache
+				});
+			  });
+			} else {
+			  // No RT scrape needed - cache as-is
+			  RatingsCache.set(cacheKey, {
+				originalTitle: data.original_title || data.title || '',
+				year: data.year || '',
+				badges: badgesToCache
+			  });
+			}
+
+			// ── Supplementary ratings (each with their own cache) ──
 			if (imdbId) {
 			  fetchAniListRating(imdbId, container);
 			}
@@ -719,7 +974,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		const cacheKey = `anilist_id_${imdbId}`;
 		const cached = RatingsCache.get(cacheKey);
 		if (cached !== null) {
-		  cb(cached.id); // cached.id can be null (meaning "no AniList ID found")
+		  cb(cached.id);
 		  return;
 		}
 
@@ -740,7 +995,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			const b = json.results.bindings;
 			const id = b.length && b[0].anilist?.value ? b[0].anilist.value : null;
 
-			// Cache the Wikidata lookup result (even if null, to avoid repeated lookups)
 			RatingsCache.set(cacheKey, { id: id });
 			cb(id);
 		  },
@@ -789,7 +1043,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			catch { return; }
 			const m = json.data?.Media;
 			if (m?.meanScore > 0) {
-			  // Cache AniList rating
 			  if (imdbId) {
 				RatingsCache.set(`anilist_rating_${imdbId}`, {
 				  mediaId: m.id,
@@ -798,7 +1051,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			  }
 			  appendAniList(container, m.id, m.meanScore);
 			} else if (imdbId) {
-			  // Cache negative result
 			  RatingsCache.set(`anilist_rating_${imdbId}`, { mediaId: null, score: 0 });
 			}
 		  }
@@ -851,7 +1103,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 				return;
 			  }
 			}
-			// Cache negative result
 			if (imdbId) {
 			  RatingsCache.set(`anilist_rating_${imdbId}`, { mediaId: null, score: 0 });
 			}
@@ -995,8 +1246,8 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 
 		  const pathSegment = type === 'show' ? 'series' : 'film';
 		  const fileSegment = type === 'show' ? `ficheserie_gen_cserie=${allocineId}` : `fichefilm_gen_cfilm=${allocineId}`;
-		  const url = `https://YOUR-CORS-PROXY-BASE-URL/https://www.allocine.fr/${pathSegment}/${fileSegment}.html`;
-	
+		  const url = `https://YOUR-CORS-SERVER-BASEURL/https://www.allocine.fr/${pathSegment}/${fileSegment}.html`;
+
 		  GM_xmlhttpRequest({
 			method: 'GET',
 			url,
@@ -1064,7 +1315,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			  const pressScore    = foundRatings[0] ? foundRatings[0].toFixed(1) : null;
 			  const audienceScore = foundRatings[1] ? foundRatings[1].toFixed(1) : null;
 
-			  // Cache the Allociné results
 			  RatingsCache.set(cacheKey, {
 				pressScore: pressScore,
 				audienceScore: audienceScore
