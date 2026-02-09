@@ -5,10 +5,10 @@
  *
  * Paste your API keys into line 45-47, min. MDBList key is mandatory to get most ratings; if no key is used, leave the value field empty
  *
- * For Rotten Tomatoes Badge "Verified Hot" to work automatically, you need a reliant CORS proxy, e.g. https://github.com/obeone/simple-cors-proxy and you need to set its base URL in line 525
- * For Allociné to work, you need a reliant CORS proxy, e.g. https://github.com/obeone/simple-cors-proxy and you need to set its base URL in line 1249
+ * For Rotten Tomatoes Badge "Verified Hot" to work automatically and Ratings for old titles with MDBList null API response + Allociné Ratings,
+ * you need a reliant CORS proxy, e.g. https://github.com/obeone/simple-cors-proxy and you need to set its base URL in line 51; for MDBList fallback, leave it empty
  *
- * Set Ratings cache duration to minimize API calls in line 48 -> default=24h
+ * Set Ratings cache duration to minimize API calls in line 48 -> default=168h (1 Week)
  *
  * Paste your modified emby.ratings.js into /system/dashboard-ui/ 
  * Add <script src="emby-ratings.js"></script> in index.html before </body>
@@ -45,7 +45,10 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	const MDBLIST_API_KEY = 'YOUR_API_KEY';
 	const TMDB_API_KEY    = 'YOUR_API_KEY';
 	const KINOPOISK_API_KEY = 'YOUR_API_KEY';
-	const CACHE_TTL_HOURS = 24; // Cache duration in Hours
+	const CACHE_TTL_HOURS = 168; // Cache duration in Hours
+	
+	// CORS Proxy Base URL für RT und Allociné Scraping
+	const CORS_PROXY_URL = ''; // e.g. 'https://cors.yourdomain.com/proxy/'
 	  
 	// ══════════════════════════════════════════════════════════════════
 	// CACHE KONFIGURATION
@@ -456,8 +459,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	}
 
 	// ══════════════════════════════════════════════════════════════════
-	// Rotten Tomatoes Scraping (Certified Fresh + Verified Hot)
-	// via Wikidata P1258 -> CORS Proxy -> parse embedded JSON
+	// Rotten Tomatoes: Get RT Slug from Wikidata
 	// ══════════════════════════════════════════════════════════════════
 
 	function getRTSlug(imdbId) {
@@ -471,7 +473,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 				return;
 			}
 
-			// Wikidata Property P1258 = Rotten Tomatoes ID (e.g. "m/movie_name" or "tv/show_name")
 			const sparql = `
 				SELECT ?rtId WHERE {
 					?item wdt:P345 "${imdbId}" .
@@ -497,15 +498,17 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		});
 	}
 
-	/**
-	 * Scrapes the RT page via CORS proxy and returns both certified statuses.
-	 * @param {string} imdbId
-	 * @param {string} type - 'movie' or 'show'
-	 * @returns {Promise<{criticsCertified: boolean|null, audienceCertified: boolean|null}>}
-	 */
+	// ══════════════════════════════════════════════════════════════════
+	// Rotten Tomatoes: Fetch Certified Status (for upgrading badges)
+	// ══════════════════════════════════════════════════════════════════
+
 	function fetchRTCertifiedStatus(imdbId, type) {
 		return new Promise((resolve) => {
-			if (!imdbId) { resolve({ criticsCertified: null, audienceCertified: null }); return; }
+			// Prüfe ob CORS Proxy verfügbar ist
+			if (!imdbId || !CORS_PROXY_URL || CORS_PROXY_URL.trim() === '') {
+            resolve({ criticsCertified: null, audienceCertified: null });
+            return;
+			}
 
 			const cacheKey = `rt_certified_${type}_${imdbId}`;
 			const cached = RatingsCache.get(cacheKey);
@@ -522,7 +525,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 					return;
 				}
 
-				const rtUrl = `https://YOUR-CORS-SERVER-BASEURL/https://www.rottentomatoes.com/${slug}`;
+				const rtUrl = `${CORS_PROXY_URL}https://www.rottentomatoes.com/${slug}`;
 
 				GM_xmlhttpRequest({
 					method: 'GET',
@@ -540,7 +543,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 						let criticsCertified = null;
 						let audienceCertified = null;
 
-						// ── Strategy 1: Parse the embedded media-scorecard JSON (most reliable) ──
 						const jsonMatch = html.match(
 							/<script[^>]*id="media-scorecard-json"[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/
 						);
@@ -548,64 +550,15 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 							try {
 								const scoreData = JSON.parse(jsonMatch[1]);
 
-								// Critics: criticsScore.certified
 								if (scoreData.criticsScore && typeof scoreData.criticsScore.certified === 'boolean') {
 									criticsCertified = scoreData.criticsScore.certified;
 								}
 
-								// Audience: audienceScore.certified
 								if (scoreData.audienceScore && typeof scoreData.audienceScore.certified === 'boolean') {
 									audienceCertified = scoreData.audienceScore.certified;
 								}
-
-								console.log(`[Emby Ratings] RT JSON parsed for ${slug}: critics=${criticsCertified}, audience=${audienceCertified}`);
 							} catch (e) {
 								console.warn('[Emby Ratings] RT JSON parse error:', e);
-							}
-						}
-
-						// ── Strategy 2: Fallback - parse HTML tag attributes ──
-						if (criticsCertified === null) {
-							const criticsTagMatch = html.match(
-								/<score-icon-critics\s[^>]*certified="(true|false)"[^>]*/
-							);
-							if (criticsTagMatch) {
-								criticsCertified = criticsTagMatch[1] === 'true';
-							}
-						}
-
-						if (audienceCertified === null) {
-							const audienceTagMatch = html.match(
-								/<score-icon-audience\s[^>]*certified="(true|false)"[^>]*/
-							);
-							if (audienceTagMatch) {
-								audienceCertified = audienceTagMatch[1] === 'true';
-							}
-						}
-
-						// ── Strategy 3: Fallback - data-json attribute variant ──
-						if (criticsCertified === null || audienceCertified === null) {
-							const altJsonMatch = html.match(
-								/data-json="mediaScorecard"[^>]*>([\s\S]*?)<\/script>/
-							);
-							if (altJsonMatch) {
-								try {
-									const altData = JSON.parse(altJsonMatch[1]);
-									if (criticsCertified === null && altData.criticsScore?.certified != null) {
-										criticsCertified = altData.criticsScore.certified === true;
-									}
-									if (audienceCertified === null && altData.audienceScore?.certified != null) {
-										audienceCertified = altData.audienceScore.certified === true;
-									}
-								} catch (e) { /* ignore */ }
-							}
-						}
-
-						// ── Strategy 4: mpscall variable for critics certified_fresh ──
-						if (criticsCertified === null) {
-							const mpscallMatch = html.match(/"cag\[certified_fresh\]"\s*:\s*"(\d)"/);
-							if (mpscallMatch) {
-								criticsCertified = mpscallMatch[1] === '1';
 							}
 						}
 
@@ -614,7 +567,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 							audienceCertified: audienceCertified
 						};
 
-						console.log(`[Emby Ratings] RT Certified for ${slug}:`, result);
 						RatingsCache.set(cacheKey, result);
 						resolve(result);
 					},
@@ -624,6 +576,131 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 						resolve(result);
 					}
 				});
+			});
+		});
+	}
+
+	// ══════════════════════════════════════════════════════════════════
+	// Rotten Tomatoes: Direct Scraping (when MDBList has no RT data)
+	// ══════════════════════════════════════════════════════════════════
+
+	function fetchRottenTomatoesDirectly(imdbId, type, container) {
+		// Prüfe ob CORS Proxy verfügbar ist
+		if (!imdbId || !CORS_PROXY_URL || CORS_PROXY_URL.trim() === '') {
+			console.log('[Emby Ratings] RT Direct Scraping übersprungen - kein CORS Proxy konfiguriert');
+			return;
+		}
+
+		const cacheKey = `rt_direct_${type}_${imdbId}`;
+		const cached = RatingsCache.get(cacheKey);
+		if (cached) {
+			if (cached.criticsScore !== null) {
+				const criticsLogo = cached.criticsScore < 60 ? 'tomatoes_rotten' : 
+								   (cached.criticsCertified ? 'tomatoes_certified' : 'tomatoes');
+				appendRatingBadge(container, criticsLogo, 'Rotten Tomatoes', 
+					`Rotten Tomatoes: ${cached.criticsScore}%`, `${cached.criticsScore}%`);
+			}
+			if (cached.audienceScore !== null) {
+				const audienceLogo = cached.audienceScore < 60 ? 'audience_rotten' :
+									(cached.audienceCertified ? 'rotten_ver' : 'audience');
+				appendRatingBadge(container, audienceLogo, 'RT Audience',
+					`RT Audience: ${cached.audienceScore}%`, `${cached.audienceScore}%`);
+			}
+			return;
+		}
+
+		getRTSlug(imdbId).then(slug => {
+			if (!slug) {
+				console.warn('[Emby Ratings] Kein RT Slug für', imdbId);
+				RatingsCache.set(cacheKey, { criticsScore: null, audienceScore: null, criticsCertified: false, audienceCertified: false });
+				return;
+			}
+
+			const rtUrl = `${CORS_PROXY_URL}https://www.rottentomatoes.com/${slug}`;
+			console.log('[Emby Ratings] RT Direct Scrape für', imdbId, '->', slug);
+
+			GM_xmlhttpRequest({
+				method: 'GET',
+				url: rtUrl,
+				onload(res) {
+					if (res.status !== 200) {
+						console.warn('[Emby Ratings] RT direct scrape failed:', res.status);
+						RatingsCache.set(cacheKey, { criticsScore: null, audienceScore: null, criticsCertified: false, audienceCertified: false });
+						return;
+					}
+
+					const html = res.responseText;
+					let criticsScore = null;
+					let criticsCertified = false;
+					let audienceScore = null;
+					let audienceCertified = false;
+
+					// Parse embedded JSON (most reliable)
+					const jsonMatch = html.match(
+						/<script[^>]*id="media-scorecard-json"[^>]*type="application\/json"[^>]*>([\s\S]*?)<\/script>/
+					);
+
+					if (jsonMatch) {
+						try {
+							const scoreData = JSON.parse(jsonMatch[1]);
+
+							// Critics Score
+							if (scoreData.criticsScore) {
+								const likedCount = scoreData.criticsScore.likedCount || 0;
+								const notLikedCount = scoreData.criticsScore.notLikedCount || 0;
+								const total = likedCount + notLikedCount;
+								if (total > 0) {
+									criticsScore = Math.round((likedCount / total) * 100);
+								}
+								criticsCertified = scoreData.criticsScore.certified === true;
+							}
+
+							// Audience Score
+							if (scoreData.audienceScore) {
+								const likedCount = scoreData.audienceScore.likedCount || 0;
+								const notLikedCount = scoreData.audienceScore.notLikedCount || 0;
+								const total = likedCount + notLikedCount;
+								if (total > 0) {
+									audienceScore = Math.round((likedCount / total) * 100);
+								}
+								audienceCertified = scoreData.audienceScore.certifiedFresh === 'verified_hot' ||
+												   scoreData.audienceScore.certified === true;
+							}
+
+							console.log(`[Emby Ratings] RT Direct: Critics=${criticsScore}% (certified=${criticsCertified}), Audience=${audienceScore}% (verified=${audienceCertified})`);
+
+						} catch (e) {
+							console.warn('[Emby Ratings] RT JSON parse error:', e);
+						}
+					}
+
+					// Cache the results
+					RatingsCache.set(cacheKey, {
+						criticsScore,
+						criticsCertified,
+						audienceScore,
+						audienceCertified
+					});
+
+					// Render Critics Score
+					if (criticsScore !== null) {
+						const criticsLogo = criticsScore < 60 ? 'tomatoes_rotten' :
+										   (criticsCertified ? 'tomatoes_certified' : 'tomatoes');
+						appendRatingBadge(container, criticsLogo, 'Rotten Tomatoes',
+							`Rotten Tomatoes: ${criticsScore}%`, `${criticsScore}%`);
+					}
+
+					// Render Audience Score
+					if (audienceScore !== null) {
+						const audienceLogo = audienceScore < 60 ? 'audience_rotten' :
+											(audienceCertified ? 'rotten_ver' : 'audience');
+						appendRatingBadge(container, audienceLogo, 'RT Audience',
+							`RT Audience: ${audienceScore}%`, `${audienceScore}%`);
+					}
+				},
+				onerror() {
+					RatingsCache.set(cacheKey, { criticsScore: null, audienceScore: null, criticsCertified: false, audienceCertified: false });
+				}
 			});
 		});
 	}
@@ -727,6 +804,17 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		  renderCachedRatings(cached, container);
 
 		  const imdbId = findImdbIdFromPage();
+		  
+		  // Check if cached data has RT ratings
+		  const hasRTCached = cached.badges && cached.badges.some(b => 
+			b.logoKey.includes('tomatoes') || b.logoKey.includes('audience') || b.logoKey.includes('rotten')
+		  );
+		  
+		  // If no RT ratings in cache, try direct scraping
+		  if (!hasRTCached && imdbId) {
+			fetchRottenTomatoesDirectly(imdbId, type, container);
+		  }
+
 		  if (imdbId) {
 			fetchAniListRating(imdbId, container);
 		  }
@@ -767,6 +855,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			let tomatoesVotes   = null;
 			let audienceScore   = null;
 			let audienceVotes   = null;
+			let hasRTFromMDBList = false;
 
 			const badgesToCache = [];
 
@@ -789,10 +878,12 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 				else if (key === 'tomatoes') {
 				  tomatoesScore = r.value;
 				  tomatoesVotes = r.votes;
+				  hasRTFromMDBList = true;
 				}
 				else if (key.includes('popcorn') || key.includes('audience')) {
 				  audienceScore = r.value;
 				  audienceVotes = r.votes;
+				  hasRTFromMDBList = true;
 				}
 			  });
 
@@ -809,7 +900,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 				  if (r.value < 60) {
 					key = 'tomatoes_rotten';
 				  } else if (isCertifiedFreshOverride || (tomatoesScore >= 75 && tomatoesVotes >= 80)) {
-					// Heuristic fallback: assume certified fresh
 					key = 'tomatoes_certified';
 				  } else {
 					key = 'tomatoes';
@@ -820,7 +910,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 				  if (r.value < 60) {
 					key = 'audience_rotten';
 				  } else if (isVerifiedHotOverride || (audienceScore >= 90 && audienceVotes >= 500)) {
-					// Heuristic fallback: assume verified hot
 					key = 'rotten_ver';
 				  } else {
 					key = 'audience';
@@ -865,81 +954,81 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			  });
 			}
 
-			// ── Async RT scraping to correct Certified Fresh + Verified Hot ──
 			const imdbId = findImdbIdFromPage();
 
-			const needsRTScrape =
-			  imdbId &&
-			  ((criticsBadgeImg && tomatoesScore >= 60) ||
-			   (audienceBadgeImg && audienceScore >= 60));
+			// ══════════════════════════════════════════════════════════════════
+			// RT FALLBACK: If MDBList has no RT data, scrape directly from RT
+			// ══════════════════════════════════════════════════════════════════
+			if (!hasRTFromMDBList && imdbId) {
+				console.log('[Emby Ratings] MDBList hat keine RT-Daten für TMDb', tmdbId, '- scrape direkt von RT');
+				fetchRottenTomatoesDirectly(imdbId, type, container);
+			}
+			// ══════════════════════════════════════════════════════════════════
+			// RT UPGRADE: If MDBList has RT data, check for Certified/Verified
+			// ══════════════════════════════════════════════════════════════════
+			else if (hasRTFromMDBList && imdbId) {
+				const needsRTScrape =
+				  (criticsBadgeImg && tomatoesScore >= 60) ||
+				  (audienceBadgeImg && audienceScore >= 60);
 
-			if (needsRTScrape) {
-			  fetchRTCertifiedStatus(imdbId, type).then(rtStatus => {
-				let cacheUpdated = false;
+				if (needsRTScrape) {
+				  fetchRTCertifiedStatus(imdbId, type).then(rtStatus => {
+					// ── Update Critics badge ──
+					if (criticsBadgeImg && tomatoesScore >= 60 && rtStatus.criticsCertified !== null) {
+					  if (rtStatus.criticsCertified === true) {
+						if (criticsBadgeImg.dataset.source !== 'tomatoes_certified') {
+						  criticsBadgeImg.src = LOGO.tomatoes_certified;
+						  criticsBadgeImg.dataset.source = 'tomatoes_certified';
+						  if (criticsBadgeCacheIndex >= 0) {
+							badgesToCache[criticsBadgeCacheIndex].logoKey = 'tomatoes_certified';
+						  }
+						}
+					  } else {
+						if (criticsBadgeImg.dataset.source === 'tomatoes_certified') {
+						  criticsBadgeImg.src = LOGO.tomatoes;
+						  criticsBadgeImg.dataset.source = 'tomatoes';
+						  if (criticsBadgeCacheIndex >= 0) {
+							badgesToCache[criticsBadgeCacheIndex].logoKey = 'tomatoes';
+						  }
+						}
+					  }
+					}
 
-				// ── Update Critics badge ──
-				if (criticsBadgeImg && tomatoesScore >= 60 && rtStatus.criticsCertified !== null) {
-				  if (rtStatus.criticsCertified === true) {
-					// RT says Certified Fresh → upgrade
-					if (criticsBadgeImg.dataset.source !== 'tomatoes_certified') {
-					  criticsBadgeImg.src = LOGO.tomatoes_certified;
-					  criticsBadgeImg.dataset.source = 'tomatoes_certified';
-					  if (criticsBadgeCacheIndex >= 0) {
-						badgesToCache[criticsBadgeCacheIndex].logoKey = 'tomatoes_certified';
+					// ── Update Audience badge ──
+					if (audienceBadgeImg && audienceScore >= 60 && rtStatus.audienceCertified !== null) {
+					  if (rtStatus.audienceCertified === true) {
+						if (audienceBadgeImg.dataset.source !== 'rotten_ver') {
+						  audienceBadgeImg.src = LOGO.rotten_ver;
+						  audienceBadgeImg.dataset.source = 'rotten_ver';
+						  if (audienceBadgeCacheIndex >= 0) {
+							badgesToCache[audienceBadgeCacheIndex].logoKey = 'rotten_ver';
+						  }
+						}
+					  } else {
+						if (audienceBadgeImg.dataset.source === 'rotten_ver') {
+						  audienceBadgeImg.src = LOGO.audience;
+						  audienceBadgeImg.dataset.source = 'audience';
+						  if (audienceBadgeCacheIndex >= 0) {
+							badgesToCache[audienceBadgeCacheIndex].logoKey = 'audience';
+						  }
+						}
 					  }
-					  cacheUpdated = true;
-					  console.log(`[Emby Ratings] Upgraded critics badge to Certified Fresh for TMDb ${tmdbId}`);
 					}
-				  } else {
-					// RT says NOT Certified Fresh → downgrade if heuristic was wrong
-					if (criticsBadgeImg.dataset.source === 'tomatoes_certified') {
-					  criticsBadgeImg.src = LOGO.tomatoes;
-					  criticsBadgeImg.dataset.source = 'tomatoes';
-					  if (criticsBadgeCacheIndex >= 0) {
-						badgesToCache[criticsBadgeCacheIndex].logoKey = 'tomatoes';
-					  }
-					  cacheUpdated = true;
-					  console.log(`[Emby Ratings] Downgraded critics badge from Certified Fresh for TMDb ${tmdbId}`);
-					}
-				  }
+
+					RatingsCache.set(cacheKey, {
+					  originalTitle: data.original_title || data.title || '',
+					  year: data.year || '',
+					  badges: badgesToCache
+					});
+				  });
+				} else {
+				  RatingsCache.set(cacheKey, {
+					originalTitle: data.original_title || data.title || '',
+					year: data.year || '',
+					badges: badgesToCache
+				  });
 				}
-
-				// ── Update Audience badge ──
-				if (audienceBadgeImg && audienceScore >= 60 && rtStatus.audienceCertified !== null) {
-				  if (rtStatus.audienceCertified === true) {
-					// RT says Verified Hot → upgrade
-					if (audienceBadgeImg.dataset.source !== 'rotten_ver') {
-					  audienceBadgeImg.src = LOGO.rotten_ver;
-					  audienceBadgeImg.dataset.source = 'rotten_ver';
-					  if (audienceBadgeCacheIndex >= 0) {
-						badgesToCache[audienceBadgeCacheIndex].logoKey = 'rotten_ver';
-					  }
-					  cacheUpdated = true;
-					  console.log(`[Emby Ratings] Upgraded audience badge to Verified Hot for TMDb ${tmdbId}`);
-					}
-				  } else {
-					// RT says NOT Verified Hot → downgrade if heuristic was wrong
-					if (audienceBadgeImg.dataset.source === 'rotten_ver') {
-					  audienceBadgeImg.src = LOGO.audience;
-					  audienceBadgeImg.dataset.source = 'audience';
-					  if (audienceBadgeCacheIndex >= 0) {
-						badgesToCache[audienceBadgeCacheIndex].logoKey = 'audience';
-					  }
-					  cacheUpdated = true;
-					  console.log(`[Emby Ratings] Downgraded audience badge from Verified Hot for TMDb ${tmdbId}`);
-					}
-				  }
-				}
-
-				// Save cache (always, to ensure first-load also caches)
-				RatingsCache.set(cacheKey, {
-				  originalTitle: data.original_title || data.title || '',
-				  year: data.year || '',
-				  badges: badgesToCache
-				});
-			  });
 			} else {
-			  // No RT scrape needed - cache as-is
 			  RatingsCache.set(cacheKey, {
 				originalTitle: data.original_title || data.title || '',
 				year: data.year || '',
@@ -1222,7 +1311,11 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	}
 
 	function fetchAllocineRatings(imdbId, type, container) {
-		if (!imdbId) return;
+		// Prüfe ob CORS Proxy verfügbar ist
+		if (!imdbId || !CORS_PROXY_URL || CORS_PROXY_URL.trim() === '') {
+			console.log('[Emby Ratings] Allociné übersprungen - kein CORS Proxy konfiguriert');
+			return;
+		}
 
 		const cacheKey = `allocine_ratings_${type}_${imdbId}`;
 		const cached = RatingsCache.get(cacheKey);
@@ -1246,7 +1339,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 
 		  const pathSegment = type === 'show' ? 'series' : 'film';
 		  const fileSegment = type === 'show' ? `ficheserie_gen_cserie=${allocineId}` : `fichefilm_gen_cfilm=${allocineId}`;
-		  const url = `https://YOUR-CORS-SERVER-BASEURL/https://www.allocine.fr/${pathSegment}/${fileSegment}.html`;
+		  const url = `${CORS_PROXY_URL}https://www.allocine.fr/${pathSegment}/${fileSegment}.html`;
 
 		  GM_xmlhttpRequest({
 			method: 'GET',
