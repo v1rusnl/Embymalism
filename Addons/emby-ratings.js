@@ -1,12 +1,12 @@
 /*!
  * Emby Ratings Integration
  * Adapted Jellyfin JS snippet -> THX to https://github.com/Druidblack/jellyfin_ratings
- * Shows IMDb, Rotten Tomatoes, Metacritic, Trakt, Letterboxd, AniList, RogerEbert, Kinopoisk, Allociné
+ * Shows IMDb, Rotten Tomatoes, Metacritic, Trakt, Letterboxd, AniList, RogerEbert, Kinopoisk, Allociné, Oscar Wins and Nominations
  *
  * Paste your API keys into line 45-47, min. MDBList key is mandatory to get most ratings; if no key is used, leave the value field empty
  *
  * For Rotten Tomatoes Badge "Verified Hot" to work automatically and Ratings for old titles with MDBList null API response + Allociné Ratings,
- * you need a reliant CORS proxy, e.g. https://github.com/obeone/simple-cors-proxy and you need to set its base URL in line 51; for MDBList fallback, leave it empty
+ * you need a reliant CORS proxy, e.g. https://github.com/obeone/simple-cors-proxy and you need to set its base URL in line 51
  *
  * Set Ratings cache duration to minimize API calls in line 48 -> default=168h (1 Week)
  *
@@ -42,13 +42,13 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 (function() {
 	'use strict';
 	  
-	const MDBLIST_API_KEY = 'YOUR_API_KEY';
-	const TMDB_API_KEY    = 'YOUR_API_KEY';
-	const KINOPOISK_API_KEY = 'YOUR_API_KEY';
+	const MDBLIST_API_KEY = ''; // API Key from https://mdblist.com/
+	const TMDB_API_KEY    = ''; // API Key from https://www.themoviedb.org/
+	const KINOPOISK_API_KEY = ''; // API key from https://kinopoiskapiunofficial.tech/
 	const CACHE_TTL_HOURS = 168; // Cache duration in Hours
 	
 	// CORS Proxy Base URL für RT und Allociné Scraping
-	const CORS_PROXY_URL = ''; // e.g. 'https://cors.yourdomain.com/proxy/'
+	const CORS_PROXY_URL = ''; // e.g. 'https://cors.mydomain.com/proxy/'
 	  
 	// ══════════════════════════════════════════════════════════════════
 	// CACHE KONFIGURATION
@@ -217,7 +217,8 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			kinopoisk: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/kinopoisk.png',
 			rogerebert: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Roger_Ebert.png',
 			allocine_critics: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/allocine_crit.png',
-			allocine_audience: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/allocine_user.png'
+			allocine_audience: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/allocine_user.png',
+			academy: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/academyaw.png'
 	};
 
 	let currentImdbId = null;
@@ -791,6 +792,141 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		});
 	}
 
+	// ══════════════════════════════════════════════════════════════════
+	// Academy Awards (via Wikidata SPARQL)
+	// ══════════════════════════════════════════════════════════════════
+
+	function fetchAcademyAwards(imdbId, container) {
+		if (!imdbId) return;
+
+		const cacheKey = `academy_awards_${imdbId}`;
+		const cached = RatingsCache.get(cacheKey);
+		if (cached !== null) {
+			// Anzeigen wenn Wins ODER Nominations > 0
+			if (cached.count > 0 || cached.nominations > 0) {
+				appendAcademyAwardsBadge(container, cached.count, cached.nominations);
+			}
+			return;
+		}
+
+		// SPARQL-Abfrage für gewonnene Academy Awards
+		// P166 = "award received" (erhaltene Auszeichnung)
+		// Q19020 = Academy Award (Oscar)
+		const sparql = `
+			SELECT (COUNT(DISTINCT ?award) AS ?wins) (COUNT(DISTINCT ?nomination) AS ?noms) WHERE {
+				?item wdt:P345 "${imdbId}" .
+				
+				# Gewonnene Oscars
+				OPTIONAL {
+					?item p:P166 ?awardStatement .
+					?awardStatement ps:P166 ?award .
+					?award wdt:P31*/wdt:P279* wd:Q19020 .
+					FILTER NOT EXISTS { ?awardStatement pq:P1552 wd:Q4356445 . }
+				}
+				
+				# Nominierungen (optional, für Tooltip)
+				OPTIONAL {
+					?item p:P1411 ?nomStatement .
+					?nomStatement ps:P1411 ?nomination .
+					?nomination wdt:P31*/wdt:P279* wd:Q19020 .
+				}
+			}`;
+
+		GM_xmlhttpRequest({
+			method: 'GET',
+			url: 'https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparql),
+			headers: {
+				'Accept': 'application/sparql-results+json',
+				'User-Agent': 'EmbyRatingsScript/1.0'
+			},
+			onload(res) {
+				if (res.status !== 200) {
+					console.warn('[Emby Ratings] Wikidata Academy Awards query failed:', res.status);
+					RatingsCache.set(cacheKey, { count: 0, nominations: 0 });
+					return;
+				}
+
+				let json;
+				try {
+					json = JSON.parse(res.responseText);
+				} catch (e) {
+					console.error('[Emby Ratings] Academy Awards JSON parse error:', e);
+					RatingsCache.set(cacheKey, { count: 0, nominations: 0 });
+					return;
+				}
+
+				const bindings = json.results?.bindings;
+				if (!bindings || bindings.length === 0) {
+					RatingsCache.set(cacheKey, { count: 0, nominations: 0 });
+					return;
+				}
+
+				const wins = parseInt(bindings[0].wins?.value || '0', 10);
+				const nominations = parseInt(bindings[0].noms?.value || '0', 10);
+
+				RatingsCache.set(cacheKey, { count: wins, nominations: nominations });
+
+				// Anzeigen wenn Wins ODER Nominations > 0
+				if (wins > 0 || nominations > 0) {
+					appendAcademyAwardsBadge(container, wins, nominations);
+				}
+			},
+			onerror(err) {
+				console.error('[Emby Ratings] Academy Awards request error:', err);
+				RatingsCache.set(cacheKey, { count: 0, nominations: 0 });
+			}
+		});
+	}
+
+	function appendAcademyAwardsBadge(container, wins, nominations) {
+		const ratingRow = container.closest('.mdblist-rating-row');
+		if (!ratingRow) return;
+
+		if (ratingRow.parentNode.querySelector('.oscar-award-row')) return;
+
+		const oscarRow = document.createElement('div');
+		oscarRow.className = 'oscar-award-row';
+		oscarRow.style.cssText = 'margin-bottom:6px; font-size:1em;';
+
+		// Wins HTML (nur wenn > 0)
+		const winsHtml = wins > 0 
+			? `<span style="color:#b58e1c; vertical-align:middle; font-size:2.2em;">${wins} Win${wins !== 1 ? 's' : ''}</span>` 
+			: '';
+
+		// Trennzeichen (nur wenn sowohl Wins als auch Nominations > 0)
+		const separatorHtml = (wins > 0 && nominations > 0) 
+			? `<span style="color:#fff; margin-left:6px; margin-right:10px; font-size:2.2em; vertical-align:middle;"></span>` 
+			: '';
+
+		// Nominierungen HTML (nur wenn > 0)
+		const nomsHtml = nominations > 0 
+			? `<span style="color:#888; font-size:2.2em; vertical-align:middle;">${nominations} Nomination${nominations !== 1 ? 's' : ''}</span>` 
+			: '';
+
+		// Tooltip Text
+		let titleText = 'Academy Awards:';
+		if (wins > 0) titleText += ` ${wins} gewonnen`;
+		if (wins > 0 && nominations > 0) titleText += ',';
+		if (nominations > 0) titleText += ` ${nominations} nominiert`;
+
+		oscarRow.innerHTML = `
+			<img src="${LOGO.academy}" 
+				 alt="Academy Awards" 
+				 title="${titleText}"
+				 style="height:1.5em; vertical-align:middle; margin-right:15px; margin-bottom:2px;">
+			${winsHtml}
+			${separatorHtml}
+			${nomsHtml}
+		`;
+
+		// Stelle sicher, dass alle Elemente gleich aligned sind
+		oscarRow.querySelectorAll('span').forEach(span => {
+			span.style.verticalAlign = 'middle';
+		});
+
+		ratingRow.parentNode.insertBefore(oscarRow, ratingRow);
+	}
+
 	function fetchMDBList(type, tmdbId, container) {
 		container.dataset.tmdbId = tmdbId;
 		container.dataset.type = type;
@@ -817,6 +953,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 
 		  if (imdbId) {
 			fetchAniListRating(imdbId, container);
+			fetchAcademyAwards(imdbId, container); 
 		  }
 
 		  const title = container.dataset.originalTitle;
@@ -1039,6 +1176,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			// ── Supplementary ratings (each with their own cache) ──
 			if (imdbId) {
 			  fetchAniListRating(imdbId, container);
+			  fetchAcademyAwards(imdbId, container);
 			}
 
 			const title = container.dataset.originalTitle;
