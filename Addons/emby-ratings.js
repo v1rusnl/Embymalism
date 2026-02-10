@@ -1,7 +1,7 @@
 /*!
  * Emby Ratings Integration
  * Adapted Jellyfin JS snippet -> THX to https://github.com/Druidblack/jellyfin_ratings
- * Shows IMDb, Rotten Tomatoes, Metacritic, Trakt, Letterboxd, AniList, RogerEbert, Kinopoisk, Allociné, Oscar Wins and Nominations
+ * Shows IMDb, Rotten Tomatoes, Metacritic, Trakt, Letterboxd, AniList, RogerEbert, Kinopoisk, Allociné, Oscars + Emmy (Wins/Nominees)
  *
  * Paste your API keys into line 45-47, min. MDBList key is mandatory to get most ratings; if no key is used, leave the value field empty
  *
@@ -218,7 +218,8 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			rogerebert: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Roger_Ebert.png',
 			allocine_critics: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/allocine_crit.png',
 			allocine_audience: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/allocine_user.png',
-			academy: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/academyaw.png'
+			academy: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/academyaw.png',
+			emmy: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/emmy.png'
 	};
 
 	let currentImdbId = null;
@@ -890,17 +891,17 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 
 		// Wins HTML (nur wenn > 0)
 		const winsHtml = wins > 0 
-			? `<span style="color:#b58e1c; vertical-align:middle; font-size:2.2em;">${wins} Win${wins !== 1 ? 's' : ''}</span>` 
+			? `<span style="color:#b58e1c; vertical-align:middle; font-size:1.5em;">${wins} Win${wins !== 1 ? 's' : ''}</span>` 
 			: '';
 
 		// Trennzeichen (nur wenn sowohl Wins als auch Nominations > 0)
 		const separatorHtml = (wins > 0 && nominations > 0) 
-			? `<span style="color:#fff; margin-left:6px; margin-right:10px; font-size:2.2em; vertical-align:middle;"></span>` 
+			? `<span style="color:#fff; margin-left:6px; margin-right:10px; font-size:1.5em; vertical-align:middle;"></span>` 
 			: '';
 
 		// Nominierungen HTML (nur wenn > 0)
 		const nomsHtml = nominations > 0 
-			? `<span style="color:#888; font-size:2.2em; vertical-align:middle;">${nominations} Nomination${nominations !== 1 ? 's' : ''}</span>` 
+			? `<span style="color:#888; font-size:1.5em; vertical-align:middle;">${nominations} Nomination${nominations !== 1 ? 's' : ''}</span>` 
 			: '';
 
 		// Tooltip Text
@@ -913,7 +914,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			<img src="${LOGO.academy}" 
 				 alt="Academy Awards" 
 				 title="${titleText}"
-				 style="height:1.5em; vertical-align:middle; margin-right:15px; margin-bottom:2px;">
+				 style="height:1.5em; vertical-align:middle; margin-right:15px; margin-bottom:8px;">
 			${winsHtml}
 			${separatorHtml}
 			${nomsHtml}
@@ -925,6 +926,171 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		});
 
 		ratingRow.parentNode.insertBefore(oscarRow, ratingRow);
+	}
+
+	// ══════════════════════════════════════════════════════════════════
+	// Emmy Awards (via Wikidata SPARQL)
+	// ══════════════════════════════════════════════════════════════════
+
+	function fetchEmmyAwards(imdbId, container) {
+		if (!imdbId) return;
+
+		const cacheKey = `emmy_awards_${imdbId}`;
+		const cached = RatingsCache.get(cacheKey);
+		if (cached !== null) {
+			if (cached.count > 0 || cached.nominations > 0) {
+				appendEmmyAwardsBadge(container, cached.count, cached.nominations);
+			}
+			return;
+		}
+
+		// Einfachere, zuverlässigere Abfragen
+		// Sucht nach allen Awards/Nominations die "Emmy" im englischen Label haben
+		const sparqlWins = `
+			SELECT (COUNT(DISTINCT ?award) AS ?count) WHERE {
+				?item wdt:P345 "${imdbId}" .
+				?item wdt:P166 ?award .
+				?award rdfs:label ?label .
+				FILTER(LANG(?label) = "en")
+				FILTER(CONTAINS(LCASE(?label), "emmy"))
+			}`;
+
+		const sparqlNoms = `
+			SELECT (COUNT(DISTINCT ?nom) AS ?count) WHERE {
+				?item wdt:P345 "${imdbId}" .
+				?item wdt:P1411 ?nom .
+				?nom rdfs:label ?label .
+				FILTER(LANG(?label) = "en")
+				FILTER(CONTAINS(LCASE(?label), "emmy"))
+			}`;
+
+		console.log('[Emby Ratings] Fetching Emmy Awards für', imdbId);
+
+		let wins = 0;
+		let nominations = 0;
+		let completedRequests = 0;
+
+		const checkComplete = () => {
+			completedRequests++;
+			if (completedRequests === 2) {
+				console.log(`[Emby Ratings] Emmy für ${imdbId}: ${wins} Wins, ${nominations} Nominations`);
+				RatingsCache.set(cacheKey, { count: wins, nominations: nominations });
+				if (wins > 0 || nominations > 0) {
+					appendEmmyAwardsBadge(container, wins, nominations);
+				}
+			}
+		};
+
+		// Wins abfragen
+		GM_xmlhttpRequest({
+			method: 'GET',
+			url: 'https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparqlWins),
+			headers: {
+				'Accept': 'application/sparql-results+json',
+				'User-Agent': 'EmbyRatingsScript/1.0'
+			},
+			onload(res) {
+				if (res.status === 200) {
+					try {
+						const json = JSON.parse(res.responseText);
+						wins = parseInt(json.results?.bindings?.[0]?.count?.value || '0', 10);
+						console.log('[Emby Ratings] Emmy Wins raw:', json.results?.bindings);
+					} catch (e) {
+						console.error('[Emby Ratings] Emmy Wins parse error:', e);
+					}
+				} else {
+					console.warn('[Emby Ratings] Emmy Wins query failed:', res.status);
+				}
+				checkComplete();
+			},
+			onerror(err) { 
+				console.error('[Emby Ratings] Emmy Wins request error:', err);
+				checkComplete(); 
+			}
+		});
+
+		// Nominations abfragen
+		GM_xmlhttpRequest({
+			method: 'GET',
+			url: 'https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparqlNoms),
+			headers: {
+				'Accept': 'application/sparql-results+json',
+				'User-Agent': 'EmbyRatingsScript/1.0'
+			},
+			onload(res) {
+				if (res.status === 200) {
+					try {
+						const json = JSON.parse(res.responseText);
+						nominations = parseInt(json.results?.bindings?.[0]?.count?.value || '0', 10);
+						console.log('[Emby Ratings] Emmy Nominations raw:', json.results?.bindings);
+					} catch (e) {
+						console.error('[Emby Ratings] Emmy Noms parse error:', e);
+					}
+				} else {
+					console.warn('[Emby Ratings] Emmy Noms query failed:', res.status);
+				}
+				checkComplete();
+			},
+			onerror(err) { 
+				console.error('[Emby Ratings] Emmy Noms request error:', err);
+				checkComplete(); 
+			}
+		});
+	}
+
+	function appendEmmyAwardsBadge(container, wins, nominations) {
+		const ratingRow = container.closest('.mdblist-rating-row');
+		if (!ratingRow) return;
+
+		if (ratingRow.parentNode.querySelector('.emmy-award-row')) return;
+
+		const emmyRow = document.createElement('div');
+		emmyRow.className = 'emmy-award-row';
+		emmyRow.style.cssText = 'margin-bottom:6px; font-size:1em;';
+
+		// Wins HTML (nur wenn > 0)
+		const winsHtml = wins > 0 
+			? `<span style="color:#c9a227; vertical-align:middle; font-size:1.5em;">${wins} Win${wins !== 1 ? 's' : ''}</span>` 
+			: '';
+
+		// Trennzeichen (nur wenn sowohl Wins als auch Nominations > 0)
+		const separatorHtml = (wins > 0 && nominations > 0) 
+			? `<span style="color:#fff; margin-left:6px; margin-right:10px; font-size:1.5em; vertical-align:middle;"></span>` 
+			: '';
+
+		// Nominierungen HTML (nur wenn > 0)
+		const nomsHtml = nominations > 0 
+			? `<span style="color:#888; font-size:1.5em; vertical-align:middle;">${nominations} Nomination${nominations !== 1 ? 's' : ''}</span>` 
+			: '';
+
+		// Tooltip Text
+		let titleText = 'Emmy Awards:';
+		if (wins > 0) titleText += ` ${wins} gewonnen`;
+		if (wins > 0 && nominations > 0) titleText += ',';
+		if (nominations > 0) titleText += ` ${nominations} nominiert`;
+
+		emmyRow.innerHTML = `
+			<img src="${LOGO.emmy}" 
+				 alt="Emmy Awards" 
+				 title="${titleText}"
+				 style="height:1.5em; vertical-align:middle; margin-right:15px; margin-bottom:8px;">
+			${winsHtml}
+			${separatorHtml}
+			${nomsHtml}
+		`;
+
+		// Stelle sicher, dass alle Elemente gleich aligned sind
+		emmyRow.querySelectorAll('span').forEach(span => {
+			span.style.verticalAlign = 'middle';
+		});
+
+		// Emmy-Row nach Oscar-Row einfügen (falls vorhanden), sonst vor der Rating-Row
+		const oscarRow = ratingRow.parentNode.querySelector('.oscar-award-row');
+		if (oscarRow) {
+			oscarRow.insertAdjacentElement('afterend', emmyRow);
+		} else {
+			ratingRow.parentNode.insertBefore(emmyRow, ratingRow);
+		}
 	}
 
 	function fetchMDBList(type, tmdbId, container) {
@@ -953,7 +1119,8 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 
 		  if (imdbId) {
 			fetchAniListRating(imdbId, container);
-			fetchAcademyAwards(imdbId, container); 
+			fetchAcademyAwards(imdbId, container);
+			fetchEmmyAwards(imdbId, container);
 		  }
 
 		  const title = container.dataset.originalTitle;
@@ -1177,6 +1344,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			if (imdbId) {
 			  fetchAniListRating(imdbId, container);
 			  fetchAcademyAwards(imdbId, container);
+			  fetchEmmyAwards(imdbId, container);
 			}
 
 			const title = container.dataset.originalTitle;
