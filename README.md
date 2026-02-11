@@ -37,7 +37,8 @@ emby-linklogos.js
 
 emby-ratings.js
 
-<img width="581" height="137" alt="image" src="https://github.com/user-attachments/assets/fe7c6808-21ed-4507-bdfe-ed6abbc7a168" />
+<img width="531" height="310" alt="image" src="https://github.com/user-attachments/assets/f163af4b-65da-4b78-b0da-6dc09b3c7b33" />
+
 
 emby-arrs.js
 
