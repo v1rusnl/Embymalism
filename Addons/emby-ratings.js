@@ -1,14 +1,14 @@
 /*!
  * Emby Ratings Integration
  * Adapted Jellyfin JS snippet -> THX to https://github.com/Druidblack/jellyfin_ratings
- * Shows IMDb, Rotten Tomatoes, Metacritic, Trakt, Letterboxd, AniList, RogerEbert, Kinopoisk, Allociné, Oscars + Emmy (Wins/Nominees)
+ * Shows IMDb, Rotten Tomatoes, Metacritic, Trakt, Letterboxd, AniList, RogerEbert, Kinopoisk, Allociné, Oscars + Emmy + Golden Globes (Wins/Nominees)
  *
- * Paste your API keys into line 45-47, min. MDBList key is mandatory to get most ratings; if no key is used, leave the value field empty
+ * Paste your API keys into line 50-52, min. MDBList key is mandatory to get most ratings; if no key is used, leave the value field empty
  *
  * For Rotten Tomatoes Badge "Verified Hot" to work automatically and Ratings for old titles with MDBList null API response + Allociné Ratings,
- * you need a reliant CORS proxy, e.g. https://github.com/obeone/simple-cors-proxy and you need to set its base URL in line 51
+ * you need a reliant CORS proxy, e.g. https://github.com/obeone/simple-cors-proxy and you need to set its base URL in line 56
  *
- * Set Ratings cache duration to minimize API calls in line 48 -> default=168h (1 Week)
+ * Set Ratings cache duration to minimize API calls in line 53 -> default=168h (1 Week)
  *
  * Paste your modified emby.ratings.js into /system/dashboard-ui/ 
  * Add <script src="emby-ratings.js"></script> in index.html before </body>
@@ -18,6 +18,11 @@
  * .filter(k => k.startsWith('emby_ratings_'))
  * .forEach(k => localStorage.removeItem(k));
  * console.log('Ratings-Cache gelöscht');
+ *
+ * Manually delete ratings cache in Browsers DevConsole (F12) for one TMDb-ID (e.g. 1399 = Game of Thrones):
+ * Oject.keys(localStorage)
+ * .filter(k => k.startsWith('emby_ratings_') && k.includes('1399'))
+ * .forEach(k => { console.log('Lösche:', k); localStorage.removeItem(k); });
  */
 
 if (typeof GM_xmlhttpRequest === 'undefined') {
@@ -156,8 +161,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	  
 	// ══════════════════════════════════════════════════════════════════
 	// MANUAL OVERRIDES (fallback if RT scrape fails or no CORS proxy is set)
-    // These are only used as a fallback if no RT slug
-    // is found in Wikidata or the CORS proxy is unavailable.
 	// ══════════════════════════════════════════════════════════════════
 	const CERTIFIED_FRESH_OVERRIDES = [
 		// '550',      // Fight Club
@@ -165,7 +168,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	];
 	  
 	const VERIFIED_HOT_OVERRIDES = [
-		// Movies with a score <90, but RT verified hot nonetheless
 		'812583', // Wake Up Dead Man A Knives Out Mystery
 		'1272837', // 28 Years Later: The Bone Temple
 		'1054867', // One Battle After Another
@@ -219,7 +221,14 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			allocine_critics: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/allocine_crit.png',
 			allocine_audience: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/allocine_user.png',
 			academy: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/academyaw.png',
-			emmy: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/emmy.png'
+			emmy: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/emmy.png',
+			globes: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/globes.png',
+			oscars_nom: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Oscars_Nom.png',
+			oscars_win: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Oscars_Win.png',
+			globes_nom: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Globe_Nom.png',
+			globes_win: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Globe_Win.png',
+			emmy_nom: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Emmy_Nom.png',
+			emmy_win: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Emmy_Win.png'
 	};
 
 	let currentImdbId = null;
@@ -303,6 +312,12 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		const existing = pageView.querySelector('.mdblist-rating-row');
 		if (existing) {
 		  existing.remove();
+		}
+
+		// Also remove any existing awards row
+		const existingAwards = pageView.querySelector('.awards-combined-row');
+		if (existingAwards) {
+		  existingAwards.remove();
 		}
 
 		const anchors = findDetailAnchors(pageView);
@@ -794,6 +809,103 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	}
 
 	// ══════════════════════════════════════════════════════════════════
+	// COMBINED AWARDS ROW (Oscars, Golden Globes, Emmys in one line)
+	// ══════════════════════════════════════════════════════════════════
+
+	/**
+	 * Ensures a single combined awards row exists above the rating row.
+	 * Returns the row element with three sub-containers: .oscar-section, .globes-section, .emmy-section
+	 */
+	function getOrCreateAwardsRow(container) {
+		const ratingRow = container.closest('.mdblist-rating-row');
+		if (!ratingRow) return null;
+
+		let awardsRow = ratingRow.parentNode.querySelector('.awards-combined-row');
+		if (awardsRow) return awardsRow;
+
+		awardsRow = document.createElement('div');
+		awardsRow.className = 'awards-combined-row';
+		awardsRow.style.cssText = 'display:flex; align-items:center; flex-wrap:wrap; gap:0px; margin-bottom:15px;';
+
+		// Create three sections that sit side by side
+		['oscar-section', 'globes-section', 'emmy-section'].forEach(cls => {
+			const section = document.createElement('div');
+			section.className = cls;
+			section.style.cssText = 'display:none; align-items:center; margin-right:18px;';
+			awardsRow.appendChild(section);
+		});
+
+		ratingRow.parentNode.insertBefore(awardsRow, ratingRow);
+		return awardsRow;
+	}
+
+	/**
+	 * Renders award statues into a section.
+	 * Wins are shown as gold statues.
+	 * Only the "nomination-only" count (nominations minus wins) is shown as grey statues.
+	 *
+	 * Example: La La Land — 6 wins, 14 total nominations
+	 *   → 6 gold statues + 8 grey statues  (14 - 6 = 8 nomination-only)
+	 *
+	 * @param {HTMLElement} section - The section element (.oscar-section, .globes-section, .emmy-section)
+	 * @param {string} logoKey - Logo key for the award category (academy, globes, emmy)
+	 * @param {string} winIconKey - LOGO key for win statue icon
+	 * @param {string} nomIconKey - LOGO key for nomination statue icon
+	 * @param {number} wins - Number of wins
+	 * @param {number} nominations - Total number of nominations (including wins)
+	 * @param {string} awardName - Display name for tooltip
+	 */
+	function renderAwardStatues(section, logoKey, winIconKey, nomIconKey, wins, nominations, awardName) {
+		section.innerHTML = '';
+
+		// Calculate nomination-only count (those that didn't result in a win)
+		const nomOnly = Math.max(0, nominations - wins);
+
+		// Build tooltip text
+		let titleText = `${awardName}:`;
+		if (wins > 0) titleText += ` ${wins} Won`;
+		if (wins > 0 && nomOnly > 0) titleText += ',';
+		if (nomOnly > 0) titleText += ` ${nomOnly} Nominated`;
+
+		// Award category logo
+		const logo = document.createElement('img');
+		logo.src = LOGO[logoKey];
+		logo.alt = awardName;
+		logo.title = titleText;
+		logo.style.cssText = 'height:2em; vertical-align:middle; margin-right:8px;';
+		section.appendChild(logo);
+
+		// Win statues (gold)
+		for (let i = 0; i < wins; i++) {
+			const statue = document.createElement('img');
+			statue.src = LOGO[winIconKey];
+			statue.alt = `${awardName} Win`;
+			statue.title = `${awardName} Win`;
+			statue.style.cssText = 'height:2em; vertical-align:middle; margin-right:1px;';
+			section.appendChild(statue);
+		}
+
+		// Small gap between wins and nomination-only statues
+		if (wins > 0 && nomOnly > 0) {
+			const gap = document.createElement('span');
+			gap.style.cssText = 'display:inline-block; width:5px;';
+			section.appendChild(gap);
+		}
+
+		// Nomination-only statues (grey) — only the ones that didn't win
+		for (let i = 0; i < nomOnly; i++) {
+			const statue = document.createElement('img');
+			statue.src = LOGO[nomIconKey];
+			statue.alt = `${awardName} Nomination`;
+			statue.title = `${awardName} Nomination`;
+			statue.style.cssText = 'height:2em; vertical-align:middle; margin-right:1px;';
+			section.appendChild(statue);
+		}
+
+		section.style.display = 'flex';
+	}
+
+	// ══════════════════════════════════════════════════════════════════
 	// Academy Awards (via Wikidata SPARQL)
 	// ══════════════════════════════════════════════════════════════════
 
@@ -810,9 +922,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			return;
 		}
 
-		// SPARQL-Abfrage für gewonnene Academy Awards
-		// P166 = "award received" (erhaltene Auszeichnung)
-		// Q19020 = Academy Award (Oscar)
 		const sparql = `
 			SELECT (COUNT(DISTINCT ?award) AS ?wins) (COUNT(DISTINCT ?nomination) AS ?noms) WHERE {
 				?item wdt:P345 "${imdbId}" .
@@ -825,7 +934,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 					FILTER NOT EXISTS { ?awardStatement pq:P1552 wd:Q4356445 . }
 				}
 				
-				# Nominierungen (optional, für Tooltip)
+				# Nominierungen
 				OPTIONAL {
 					?item p:P1411 ?nomStatement .
 					?nomStatement ps:P1411 ?nomination .
@@ -880,52 +989,132 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	}
 
 	function appendAcademyAwardsBadge(container, wins, nominations) {
-		const ratingRow = container.closest('.mdblist-rating-row');
-		if (!ratingRow) return;
+		const awardsRow = getOrCreateAwardsRow(container);
+		if (!awardsRow) return;
 
-		if (ratingRow.parentNode.querySelector('.oscar-award-row')) return;
+		const section = awardsRow.querySelector('.oscar-section');
+		if (!section || section.childNodes.length > 0) return; // already rendered
 
-		const oscarRow = document.createElement('div');
-		oscarRow.className = 'oscar-award-row';
-		oscarRow.style.cssText = 'margin-bottom:6px; font-size:1em;';
+		renderAwardStatues(section, 'academy', 'oscars_win', 'oscars_nom', wins, nominations, 'Academy Awards');
+	}
 
-		// Wins HTML (nur wenn > 0)
-		const winsHtml = wins > 0 
-			? `<span style="color:#b58e1c; vertical-align:middle; font-size:1.5em;">${wins} Win${wins !== 1 ? 's' : ''}</span>` 
-			: '';
+	// ══════════════════════════════════════════════════════════════════
+	// Golden Globe Awards (via Wikidata SPARQL)
+	// ══════════════════════════════════════════════════════════════════
 
-		// Trennzeichen (nur wenn sowohl Wins als auch Nominations > 0)
-		const separatorHtml = (wins > 0 && nominations > 0) 
-			? `<span style="color:#fff; margin-left:6px; margin-right:10px; font-size:1.5em; vertical-align:middle;"></span>` 
-			: '';
+	function fetchGoldenGlobeAwards(imdbId, container) {
+		if (!imdbId) return;
 
-		// Nominierungen HTML (nur wenn > 0)
-		const nomsHtml = nominations > 0 
-			? `<span style="color:#888; font-size:1.5em; vertical-align:middle;">${nominations} Nomination${nominations !== 1 ? 's' : ''}</span>` 
-			: '';
+		const cacheKey = `golden_globe_awards_${imdbId}`;
+		const cached = RatingsCache.get(cacheKey);
+		if (cached !== null) {
+			if (cached.count > 0 || cached.nominations > 0) {
+				appendGoldenGlobeAwardsBadge(container, cached.count, cached.nominations);
+			}
+			return;
+		}
 
-		// Tooltip Text
-		let titleText = 'Academy Awards:';
-		if (wins > 0) titleText += ` ${wins} gewonnen`;
-		if (wins > 0 && nominations > 0) titleText += ',';
-		if (nominations > 0) titleText += ` ${nominations} nominiert`;
+		// SPARQL: Search for awards/nominations with "golden globe" in the English label
+		const sparqlWins = `
+			SELECT (COUNT(DISTINCT ?award) AS ?count) WHERE {
+				?item wdt:P345 "${imdbId}" .
+				?item wdt:P166 ?award .
+				?award rdfs:label ?label .
+				FILTER(LANG(?label) = "en")
+				FILTER(CONTAINS(LCASE(?label), "golden globe"))
+			}`;
 
-		oscarRow.innerHTML = `
-			<img src="${LOGO.academy}" 
-				 alt="Academy Awards" 
-				 title="${titleText}"
-				 style="height:1.5em; vertical-align:middle; margin-right:15px; margin-bottom:8px;">
-			${winsHtml}
-			${separatorHtml}
-			${nomsHtml}
-		`;
+		const sparqlNoms = `
+			SELECT (COUNT(DISTINCT ?nom) AS ?count) WHERE {
+				?item wdt:P345 "${imdbId}" .
+				?item wdt:P1411 ?nom .
+				?nom rdfs:label ?label .
+				FILTER(LANG(?label) = "en")
+				FILTER(CONTAINS(LCASE(?label), "golden globe"))
+			}`;
 
-		// Stelle sicher, dass alle Elemente gleich aligned sind
-		oscarRow.querySelectorAll('span').forEach(span => {
-			span.style.verticalAlign = 'middle';
+		console.log('[Emby Ratings] Fetching Golden Globe Awards für', imdbId);
+
+		let wins = 0;
+		let nominations = 0;
+		let completedRequests = 0;
+
+		const checkComplete = () => {
+			completedRequests++;
+			if (completedRequests === 2) {
+				console.log(`[Emby Ratings] Golden Globes für ${imdbId}: ${wins} Wins, ${nominations} Nominations`);
+				RatingsCache.set(cacheKey, { count: wins, nominations: nominations });
+				if (wins > 0 || nominations > 0) {
+					appendGoldenGlobeAwardsBadge(container, wins, nominations);
+				}
+			}
+		};
+
+		// Wins abfragen
+		GM_xmlhttpRequest({
+			method: 'GET',
+			url: 'https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparqlWins),
+			headers: {
+				'Accept': 'application/sparql-results+json',
+				'User-Agent': 'EmbyRatingsScript/1.0'
+			},
+			onload(res) {
+				if (res.status === 200) {
+					try {
+						const json = JSON.parse(res.responseText);
+						wins = parseInt(json.results?.bindings?.[0]?.count?.value || '0', 10);
+						console.log('[Emby Ratings] Golden Globe Wins raw:', json.results?.bindings);
+					} catch (e) {
+						console.error('[Emby Ratings] Golden Globe Wins parse error:', e);
+					}
+				} else {
+					console.warn('[Emby Ratings] Golden Globe Wins query failed:', res.status);
+				}
+				checkComplete();
+			},
+			onerror(err) {
+				console.error('[Emby Ratings] Golden Globe Wins request error:', err);
+				checkComplete();
+			}
 		});
 
-		ratingRow.parentNode.insertBefore(oscarRow, ratingRow);
+		// Nominations abfragen
+		GM_xmlhttpRequest({
+			method: 'GET',
+			url: 'https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparqlNoms),
+			headers: {
+				'Accept': 'application/sparql-results+json',
+				'User-Agent': 'EmbyRatingsScript/1.0'
+			},
+			onload(res) {
+				if (res.status === 200) {
+					try {
+						const json = JSON.parse(res.responseText);
+						nominations = parseInt(json.results?.bindings?.[0]?.count?.value || '0', 10);
+						console.log('[Emby Ratings] Golden Globe Nominations raw:', json.results?.bindings);
+					} catch (e) {
+						console.error('[Emby Ratings] Golden Globe Noms parse error:', e);
+					}
+				} else {
+					console.warn('[Emby Ratings] Golden Globe Noms query failed:', res.status);
+				}
+				checkComplete();
+			},
+			onerror(err) {
+				console.error('[Emby Ratings] Golden Globe Noms request error:', err);
+				checkComplete();
+			}
+		});
+	}
+
+	function appendGoldenGlobeAwardsBadge(container, wins, nominations) {
+		const awardsRow = getOrCreateAwardsRow(container);
+		if (!awardsRow) return;
+
+		const section = awardsRow.querySelector('.globes-section');
+		if (!section || section.childNodes.length > 0) return; // already rendered
+
+		renderAwardStatues(section, 'globes', 'globes_win', 'globes_nom', wins, nominations, 'Golden Globe Awards');
 	}
 
 	// ══════════════════════════════════════════════════════════════════
@@ -944,8 +1133,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			return;
 		}
 
-		// Einfachere, zuverlässigere Abfragen
-		// Sucht nach allen Awards/Nominations die "Emmy" im englischen Label haben
 		const sparqlWins = `
 			SELECT (COUNT(DISTINCT ?award) AS ?count) WHERE {
 				?item wdt:P345 "${imdbId}" .
@@ -1039,59 +1226,18 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	}
 
 	function appendEmmyAwardsBadge(container, wins, nominations) {
-		const ratingRow = container.closest('.mdblist-rating-row');
-		if (!ratingRow) return;
+		const awardsRow = getOrCreateAwardsRow(container);
+		if (!awardsRow) return;
 
-		if (ratingRow.parentNode.querySelector('.emmy-award-row')) return;
+		const section = awardsRow.querySelector('.emmy-section');
+		if (!section || section.childNodes.length > 0) return; // already rendered
 
-		const emmyRow = document.createElement('div');
-		emmyRow.className = 'emmy-award-row';
-		emmyRow.style.cssText = 'margin-bottom:6px; font-size:1em;';
-
-		// Wins HTML (nur wenn > 0)
-		const winsHtml = wins > 0 
-			? `<span style="color:#c9a227; vertical-align:middle; font-size:1.5em;">${wins} Win${wins !== 1 ? 's' : ''}</span>` 
-			: '';
-
-		// Trennzeichen (nur wenn sowohl Wins als auch Nominations > 0)
-		const separatorHtml = (wins > 0 && nominations > 0) 
-			? `<span style="color:#fff; margin-left:6px; margin-right:10px; font-size:1.5em; vertical-align:middle;"></span>` 
-			: '';
-
-		// Nominierungen HTML (nur wenn > 0)
-		const nomsHtml = nominations > 0 
-			? `<span style="color:#888; font-size:1.5em; vertical-align:middle;">${nominations} Nomination${nominations !== 1 ? 's' : ''}</span>` 
-			: '';
-
-		// Tooltip Text
-		let titleText = 'Emmy Awards:';
-		if (wins > 0) titleText += ` ${wins} gewonnen`;
-		if (wins > 0 && nominations > 0) titleText += ',';
-		if (nominations > 0) titleText += ` ${nominations} nominiert`;
-
-		emmyRow.innerHTML = `
-			<img src="${LOGO.emmy}" 
-				 alt="Emmy Awards" 
-				 title="${titleText}"
-				 style="height:1.5em; vertical-align:middle; margin-right:15px; margin-bottom:8px;">
-			${winsHtml}
-			${separatorHtml}
-			${nomsHtml}
-		`;
-
-		// Stelle sicher, dass alle Elemente gleich aligned sind
-		emmyRow.querySelectorAll('span').forEach(span => {
-			span.style.verticalAlign = 'middle';
-		});
-
-		// Emmy-Row nach Oscar-Row einfügen (falls vorhanden), sonst vor der Rating-Row
-		const oscarRow = ratingRow.parentNode.querySelector('.oscar-award-row');
-		if (oscarRow) {
-			oscarRow.insertAdjacentElement('afterend', emmyRow);
-		} else {
-			ratingRow.parentNode.insertBefore(emmyRow, ratingRow);
-		}
+		renderAwardStatues(section, 'emmy', 'emmy_win', 'emmy_nom', wins, nominations, 'Emmy Awards');
 	}
+
+	// ══════════════════════════════════════════════════════════════════
+	// MDBList Main Fetch
+	// ══════════════════════════════════════════════════════════════════
 
 	function fetchMDBList(type, tmdbId, container) {
 		container.dataset.tmdbId = tmdbId;
@@ -1120,6 +1266,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		  if (imdbId) {
 			fetchAniListRating(imdbId, container);
 			fetchAcademyAwards(imdbId, container);
+			fetchGoldenGlobeAwards(imdbId, container);
 			fetchEmmyAwards(imdbId, container);
 		  }
 
@@ -1344,6 +1491,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			if (imdbId) {
 			  fetchAniListRating(imdbId, container);
 			  fetchAcademyAwards(imdbId, container);
+			  fetchGoldenGlobeAwards(imdbId, container);
 			  fetchEmmyAwards(imdbId, container);
 			}
 
