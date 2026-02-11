@@ -1,7 +1,7 @@
 /*!
  * Emby Ratings Integration
  * Adapted Jellyfin JS snippet -> THX to https://github.com/Druidblack/jellyfin_ratings
- * Shows IMDb, Rotten Tomatoes, Metacritic, Trakt, Letterboxd, AniList, RogerEbert, Kinopoisk, Allociné, Oscars + Emmy + Golden Globes (Wins/Nominees)
+ * Shows IMDb, Rotten Tomatoes, Metacritic, Trakt, Letterboxd, AniList, RogerEbert, Kinopoisk, Allociné, Oscars + Emmy + Golden Globes (Wins/Nominees), Palme d'Or + Berlinale Wins
  *
  * Paste your API keys into line 50-52, min. MDBList key is mandatory to get most ratings; if no key is used, leave the value field empty
  *
@@ -228,7 +228,9 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			globes_nom: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Globe_Nom.png',
 			globes_win: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Globe_Win.png',
 			emmy_nom: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Emmy_Nom.png',
-			emmy_win: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Emmy_Win.png'
+			emmy_win: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Emmy_Win.png',
+			berlinale: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/berlinalebear.png',
+			cannes: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/cannes.png'
 	};
 
 	let currentImdbId = null;
@@ -825,13 +827,13 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 
 		awardsRow = document.createElement('div');
 		awardsRow.className = 'awards-combined-row';
-		awardsRow.style.cssText = 'display:flex; align-items:center; flex-wrap:wrap; gap:0px; margin-bottom:15px;';
+		awardsRow.style.cssText = 'display:flex; align-items:center; flex-wrap:wrap; gap:0px; margin-bottom:20px;';
 
-		// Create three sections that sit side by side
-		['oscar-section', 'globes-section', 'emmy-section'].forEach(cls => {
+		// Create sections that sit side by side
+		['oscar-section', 'globes-section', 'emmy-section', 'berlinale-section', 'cannes-section'].forEach(cls => {
 			const section = document.createElement('div');
 			section.className = cls;
-			section.style.cssText = 'display:none; align-items:center; margin-right:18px;';
+			section.style.cssText = 'display:none; align-items:center; margin-right:40px;';
 			awardsRow.appendChild(section);
 		});
 
@@ -1234,6 +1236,166 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 
 		renderAwardStatues(section, 'emmy', 'emmy_win', 'emmy_nom', wins, nominations, 'Emmy Awards');
 	}
+	
+	// ══════════════════════════════════════════════════════════════════
+	// Goldener Bär - Berlinale (via Wikidata SPARQL)
+	// Only shows logo if film has won — Q154590
+	// ══════════════════════════════════════════════════════════════════
+
+	function fetchBerlinaleAward(imdbId, container) {
+		if (!imdbId) return;
+
+		const cacheKey = `berlinale_award_${imdbId}`;
+		const cached = RatingsCache.get(cacheKey);
+		if (cached !== null) {
+			if (cached.won) {
+				appendBerlinaleBadge(container);
+			}
+			return;
+		}
+
+		const sparql = `
+			ASK {
+				?item wdt:P345 "${imdbId}" .
+				?item wdt:P166 wd:Q154590 .
+			}`;
+
+		console.log('[Emby Ratings] Checking Goldener Bär for', imdbId);
+
+		GM_xmlhttpRequest({
+			method: 'GET',
+			url: 'https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparql),
+			headers: {
+				'Accept': 'application/sparql-results+json',
+				'User-Agent': 'EmbyRatingsScript/1.0'
+			},
+			onload(res) {
+				if (res.status !== 200) {
+					console.warn('[Emby Ratings] Berlinale query failed:', res.status);
+					RatingsCache.set(cacheKey, { won: false });
+					return;
+				}
+
+				let json;
+				try {
+					json = JSON.parse(res.responseText);
+				} catch (e) {
+					console.error('[Emby Ratings] Berlinale JSON parse error:', e);
+					RatingsCache.set(cacheKey, { won: false });
+					return;
+				}
+
+				const won = json.boolean === true;
+				RatingsCache.set(cacheKey, { won: won });
+
+				if (won) {
+					console.log(`[Emby Ratings] 🏆 Goldener Bär gewonnen: ${imdbId}`);
+					appendBerlinaleBadge(container);
+				}
+			},
+			onerror(err) {
+				console.error('[Emby Ratings] Berlinale request error:', err);
+				RatingsCache.set(cacheKey, { won: false });
+			}
+		});
+	}
+
+	function appendBerlinaleBadge(container) {
+		const awardsRow = getOrCreateAwardsRow(container);
+		if (!awardsRow) return;
+
+		const section = awardsRow.querySelector('.berlinale-section');
+		if (!section || section.childNodes.length > 0) return; // already rendered
+
+		const logo = document.createElement('img');
+		logo.src = LOGO.berlinale;
+		logo.alt = 'Goldener Bär (Berlinale)';
+		logo.title = 'Goldener Bär – Berlinale';
+		logo.style.cssText = 'height:2em; vertical-align:middle;';
+		section.appendChild(logo);
+
+		section.style.display = 'flex';
+	}
+
+	// ══════════════════════════════════════════════════════════════════
+	// Palme d'Or - Cannes (via Wikidata SPARQL)
+	// Only shows logo if film has won — Q179808
+	// ══════════════════════════════════════════════════════════════════
+
+	function fetchCannesAward(imdbId, container) {
+		if (!imdbId) return;
+
+		const cacheKey = `cannes_award_${imdbId}`;
+		const cached = RatingsCache.get(cacheKey);
+		if (cached !== null) {
+			if (cached.won) {
+				appendCannesBadge(container);
+			}
+			return;
+		}
+
+		const sparql = `
+			ASK {
+				?item wdt:P345 "${imdbId}" .
+				?item wdt:P166 wd:Q179808 .
+			}`;
+
+		console.log('[Emby Ratings] Checking Palme d\'Or for', imdbId);
+
+		GM_xmlhttpRequest({
+			method: 'GET',
+			url: 'https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparql),
+			headers: {
+				'Accept': 'application/sparql-results+json',
+				'User-Agent': 'EmbyRatingsScript/1.0'
+			},
+			onload(res) {
+				if (res.status !== 200) {
+					console.warn('[Emby Ratings] Cannes query failed:', res.status);
+					RatingsCache.set(cacheKey, { won: false });
+					return;
+				}
+
+				let json;
+				try {
+					json = JSON.parse(res.responseText);
+				} catch (e) {
+					console.error('[Emby Ratings] Cannes JSON parse error:', e);
+					RatingsCache.set(cacheKey, { won: false });
+					return;
+				}
+
+				const won = json.boolean === true;
+				RatingsCache.set(cacheKey, { won: won });
+
+				if (won) {
+					console.log(`[Emby Ratings] 🏆 Palme d'Or gewonnen: ${imdbId}`);
+					appendCannesBadge(container);
+				}
+			},
+			onerror(err) {
+				console.error('[Emby Ratings] Cannes request error:', err);
+				RatingsCache.set(cacheKey, { won: false });
+			}
+		});
+	}
+
+	function appendCannesBadge(container) {
+		const awardsRow = getOrCreateAwardsRow(container);
+		if (!awardsRow) return;
+
+		const section = awardsRow.querySelector('.cannes-section');
+		if (!section || section.childNodes.length > 0) return; // already rendered
+
+		const logo = document.createElement('img');
+		logo.src = LOGO.cannes;
+		logo.alt = "Palme d'Or (Cannes)";
+		logo.title = "Palme d'Or – Festival de Cannes";
+		logo.style.cssText = 'height:2em; vertical-align:middle;';
+		section.appendChild(logo);
+
+		section.style.display = 'flex';
+	}	
 
 	// ══════════════════════════════════════════════════════════════════
 	// MDBList Main Fetch
@@ -1268,6 +1430,8 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			fetchAcademyAwards(imdbId, container);
 			fetchGoldenGlobeAwards(imdbId, container);
 			fetchEmmyAwards(imdbId, container);
+			fetchBerlinaleAward(imdbId, container);
+			fetchCannesAward(imdbId, container);
 		  }
 
 		  const title = container.dataset.originalTitle;
@@ -1493,6 +1657,8 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			  fetchAcademyAwards(imdbId, container);
 			  fetchGoldenGlobeAwards(imdbId, container);
 			  fetchEmmyAwards(imdbId, container);
+			  fetchBerlinaleAward(imdbId, container);
+			  fetchCannesAward(imdbId, container);
 			}
 
 			const title = container.dataset.originalTitle;
