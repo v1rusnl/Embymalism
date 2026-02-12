@@ -11,7 +11,7 @@
  * Set Ratings cache duration to minimize API calls in line 53 -> default=168h (1 Week)
  *
  * Paste your modified emby.ratings.js into /system/dashboard-ui/ 
- * Add <script src="emby-ratings.js"></script> in index.html before </body>
+ * Add <script src="emby-ratings.js" defer></script> in index.html before </body>
  *
  * Manually delete ratings cache in Browsers DevConsole (F12):
  * Object.keys(localStorage)
@@ -20,7 +20,7 @@
  * console.log('Ratings-Cache gelöscht');
  *
  * Manually delete ratings cache in Browsers DevConsole (F12) for one TMDb-ID (e.g. 1399 = Game of Thrones):
- * Oject.keys(localStorage)
+ * Object.keys(localStorage)
  * .filter(k => k.startsWith('emby_ratings_') && k.includes('1399'))
  * .forEach(k => { console.log('Lösche:', k); localStorage.removeItem(k); });
  */

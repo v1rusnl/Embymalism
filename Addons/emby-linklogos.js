@@ -1,7 +1,7 @@
 /*!
  * Emby Link Logos Integration
  * Replaces text links (IMDb, TheMovieDb, Trakt, TheTVDB) with logo icons in Emby detail pages
- * Copy script inside /system/dashboard-ui/ and add <script src="emby-linklogos.js"></script> in index.html before </body>
+ * Copy script inside /system/dashboard-ui/ and add <script src="emby-linklogos.js" defer></script> in index.html before </body>
  */
 
 (function () {

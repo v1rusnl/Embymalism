@@ -3,7 +3,7 @@
  * Adapted Jellyfin JS snippet -> THX to https://github.com/n00bcodr/Jellyfin-Elsewhere
  * Shows available Streaming Providers for Library items
  * Add your TMDB API Key in line 15 and choose your settings
- * Copy script inside /system/dashboard-ui/ and add <script src="emby-elsewehre.js"></script> in index.html before </body>
+ * Copy script inside /system/dashboard-ui/ and add <script src="emby-elsewehre.js" defer></script> in index.html before </body>
  */
 
 (function() {

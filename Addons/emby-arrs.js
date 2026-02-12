@@ -3,7 +3,7 @@
  * Adapted Jellyfin JS snippet -> THX to https://github.com/n00bcodr/Jellyfin-Enhanced
  * Shows Radarr/Sonarr Links on Emby detail pages
  * Add your Radarr/Sonarr base URLs and API Keys in line 12-22
- * Copy script inside /system/dashboard-ui/ and add <script src="emby-arrs.js"></script> in index.html before </body>
+ * Copy script inside /system/dashboard-ui/ and add <script src="emby-arrs.js" defer></script> in index.html before </body>
  */
 
 (function () {
