@@ -12,7 +12,7 @@
     const LINK_LOGOS = {
         'imdb': {
             match: (href) => href.includes('imdb.com'),
-            logo: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/IMDb.png',
+            logo: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/IMDb_noframe.png',
             label: 'IMDb',
             height: '20px'
         },
