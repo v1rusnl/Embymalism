@@ -958,7 +958,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 
 		awardsRow = document.createElement('div');
 		awardsRow.className = 'awards-combined-row';
-		awardsRow.style.cssText = 'display:flex; align-items:center; flex-wrap:wrap; gap:0px; margin-bottom:20px;';
+		awardsRow.style.cssText = 'display:flex; align-items:center; flex-wrap:wrap; gap:0px; margin-bottom:13px;';
 
 		// Create sections that sit side by side
 		['oscar-section', 'globes-section', 'emmy-section', 'berlinale-section', 'cannes-section'].forEach(cls => {
