@@ -5,596 +5,254 @@
 * Adds Radarr/Sonarr links directly to the links section -> Set up your API keys and URLs in the Config at the top of the script
 * Copy script inside /system/dashboard-ui/ and add <script src="emby-linklogos.js" defer></script> in index.html before </body>
 */  
-(function () {
-'use strict';  
 
-// ==================== KONFIGURATION ====================
+(function () {
+'use strict';
+
+// ==================== CONFIGURATION ====================
 const CONFIG = {
-    // Radarr Einstellungen
     RADARR_URL: '',
     RADARR_API_KEY: '',
-    
-    // Sonarr Einstellungen
     SONARR_URL: '',
     SONARR_API_KEY: '',
-    
-    // Rotten Tomatoes aktivieren
     ENABLE_ROTTEN_TOMATOES: true,
 };
-// ========================================================
+// ==================== CONFIGURATION END ====================
 
-const LOG_PREFIX = '🔗 Emby Link Logos:';  
+const LOG = '🔗 Emby Link Logos:';
+const CDN = 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo';
+const PROCESSED = 'data-logo-processed';
+const ARR_PROCESSED = 'data-arr-processed';
 
 const LINK_LOGOS = {
-    'imdb': {
-        match: (href) => href.includes('imdb.com'),
-        logo: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/IMDb_noframe.png',
-        label: 'IMDb',
-        height: '20px'
-    },
-    'tmdb': {
-        match: (href) => href.includes('themoviedb.org'),
-        logo: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/TMDB.png',
-        label: 'TMDB',
-        height: '25px'
-    },
-    'trakt': {
-        match: (href) => href.includes('trakt.tv'),
-        logo: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Trakt.png',
-        label: 'Trakt',
-        height: '25px'
-    },
-    'tvdb': {
-        match: (href) => href.includes('thetvdb.com'),
-        logo: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/tvdb.png',
-        label: 'TheTVDB',
-        height: '25px'
-    }
-};  
+    'imdb.com':       { logo: `${CDN}/IMDb_noframe.png`, label: 'IMDb',    height: '20px' },
+    'themoviedb.org': { logo: `${CDN}/TMDB.png`,         label: 'TMDB',    height: '25px' },
+    'trakt.tv':       { logo: `${CDN}/Trakt.png`,        label: 'Trakt',   height: '25px' },
+    'thetvdb.com':    { logo: `${CDN}/tvdb.png`,         label: 'TheTVDB', height: '25px' },
+};
 
-const PROCESSED_ATTR = 'data-logo-processed';
-const ARR_PROCESSED_ATTR = 'data-arr-processed';
+let debounceTimer = null, retryTimer = null, currentItemId = null, isProcessing = false;
+const cache = { radarr: new Map(), sonarr: new Map(), rt: new Map() };
 
-let debounceTimer = null;
-let retryTimer = null;
-let currentItemId = null;
-
-// Cache für Arr-Lookups und RT Slugs
-const radarrCache = new Map();
-const sonarrCache = new Map();
-const rtSlugCache = new Map();
-
-// ==================== HELPER FUNKTIONEN ====================
-
+// ==================== HELPERS ====================
 function getItemIdFromUrl() {
-    const urlParams = new URLSearchParams(window.location.search);
-    let id = urlParams.get('id');
-    if (!id) {
-        const hashParts = window.location.hash.split('?');
-        if (hashParts.length > 1) {
-            const hashParams = new URLSearchParams(hashParts[1]);
-            id = hashParams.get('id');
-        }
-    }
-    if (!id) {
-        const match = window.location.href.match(/[?&]id=(\d+)/);
-        if (match) id = match[1];
-    }
-    return id;
+    const match = window.location.href.match(/[?&]id=(\d+)/);
+    return match ? match[1] : null;
 }
 
 function getApiClient() {
-    if (typeof ApiClient !== 'undefined') return ApiClient;
-    if (window.ApiClient) return window.ApiClient;
-    return null;
+    return (typeof ApiClient !== 'undefined' && ApiClient) || window.ApiClient || null;
 }
 
 async function getEmbyItem(itemId) {
-    const apiClient = getApiClient();
-    if (!apiClient) {
-        console.error(`${LOG_PREFIX} ApiClient nicht verfügbar.`);
-        return null;
-    }
-    try {
-        const userId = apiClient.getCurrentUserId();
-        const item = await apiClient.getItem(userId, itemId);
-        return item;
-    } catch (err) {
-        console.error(`${LOG_PREFIX} Fehler beim Abrufen des Items:`, err);
-        return null;
-    }
+    const api = getApiClient();
+    if (!api) return null;
+    try { return await api.getItem(api.getCurrentUserId(), itemId); }
+    catch (e) { console.error(`${LOG} Item-Abruf fehlgeschlagen:`, e); return null; }
+}
+
+function getProviderId(item, key) {
+    return item?.ProviderIds?.[key] || item?.ProviderIds?.[key.toLowerCase()] || null;
 }
 
 function getVisibleDetailView() {
-    const allViews = document.querySelectorAll('.view-item-item');
-    for (const view of allViews) {
-        if (!view.classList.contains('hide')) {
-            return view;
-        }
-    }
-    return null;
+    return document.querySelector('.view-item-item:not(.hide)') || null;
 }
 
-function getTmdbId(item) {
-    if (item?.ProviderIds?.Tmdb) return item.ProviderIds.Tmdb;
-    if (item?.ProviderIds?.tmdb) return item.ProviderIds.tmdb;
-    return null;
+// ==================== LOGO-IMG ERSTELLEN ====================
+function createLogoImg(src, label, height = '22px') {
+    const img = document.createElement('img');
+    Object.assign(img, { src, alt: label, title: label, draggable: false });
+    img.style.cssText = `height:${height};width:auto;object-fit:contain;vertical-align:middle;opacity:0.85;transition:opacity .2s`;
+    img.addEventListener('mouseenter', () => img.style.opacity = '1');
+    img.addEventListener('mouseleave', () => img.style.opacity = '0.85');
+    return img;
 }
 
-function getTvdbId(item) {
-    if (item?.ProviderIds?.Tvdb) return item.ProviderIds.Tvdb;
-    if (item?.ProviderIds?.tvdb) return item.ProviderIds.tvdb;
-    return null;
+function styleLinkElement(el) {
+    el.style.cssText += 'display:inline-flex;align-items:center;padding:2px 0';
 }
 
-function getImdbId(item) {
-    if (item?.ProviderIds?.Imdb) return item.ProviderIds.Imdb;
-    if (item?.ProviderIds?.imdb) return item.ProviderIds.imdb;
-    return null;
-}
-
-// ==================== ROTTEN TOMATOES WIKIDATA LOOKUP ====================
-
+// ==================== ROTTEN TOMATOES ====================
 async function getRTSlug(imdbId) {
     if (!imdbId) return null;
-    if (rtSlugCache.has(imdbId)) return rtSlugCache.get(imdbId);
-    
+    if (cache.rt.has(imdbId)) return cache.rt.get(imdbId);
     try {
         const sparql = `SELECT ?rtId WHERE { ?item wdt:P345 "${imdbId}" . ?item wdt:P1258 ?rtId . } LIMIT 1`;
-        const response = await fetch('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparql));
-        
-        if (!response.ok) {
-            rtSlugCache.set(imdbId, null);
-            return null;
-        }
-        
-        const json = await response.json();
-        const bindings = json.results.bindings;
-        const slug = bindings.length && bindings[0].rtId?.value ? bindings[0].rtId.value : null;
-        
-        rtSlugCache.set(imdbId, slug);
+        const resp = await fetch('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparql));
+        if (!resp.ok) { cache.rt.set(imdbId, null); return null; }
+        const bindings = (await resp.json()).results.bindings;
+        const slug = bindings[0]?.rtId?.value || null;
+        cache.rt.set(imdbId, slug);
         return slug;
-    } catch (err) {
-        console.error(`${LOG_PREFIX} Wikidata RT Lookup Fehler:`, err);
-        rtSlugCache.set(imdbId, null);
-        return null;
-    }
+    } catch (e) { console.error(`${LOG} RT-Lookup:`, e); cache.rt.set(imdbId, null); return null; }
 }
 
-// ==================== RADARR/SONARR LOOKUP ====================
+// ==================== RADARR/SONARR ====================
+async function fetchJson(url, apiKey) {
+    const resp = await fetch(url, { headers: { 'X-Api-Key': apiKey } });
+    return resp.ok ? resp.json() : null;
+}
 
 async function lookupRadarr(tmdbId) {
-    if (radarrCache.has(tmdbId)) return radarrCache.get(tmdbId);
+    if (cache.radarr.has(tmdbId)) return cache.radarr.get(tmdbId);
     try {
-        const response = await fetch(`${CONFIG.RADARR_URL}/api/v3/movie?tmdbId=${tmdbId}`, {
-            headers: { 'X-Api-Key': CONFIG.RADARR_API_KEY }
-        });
-        if (!response.ok) {
-            const lookupResp = await fetch(`${CONFIG.RADARR_URL}/api/v3/movie/lookup/tmdb?tmdbId=${tmdbId}`, {
-                headers: { 'X-Api-Key': CONFIG.RADARR_API_KEY }
-            });
-            if (lookupResp.ok) {
-                const data = await lookupResp.json();
-                const result = { found: false, titleSlug: data.titleSlug || null, tmdbId };
-                radarrCache.set(tmdbId, result);
-                return result;
-            }
-            radarrCache.set(tmdbId, { found: false, titleSlug: null, tmdbId });
-            return { found: false, titleSlug: null, tmdbId };
+        const movies = await fetchJson(`${CONFIG.RADARR_URL}/api/v3/movie?tmdbId=${tmdbId}`, CONFIG.RADARR_API_KEY);
+        if (movies?.length) {
+            const r = { found: true, titleSlug: movies[0].titleSlug, tmdbId };
+            cache.radarr.set(tmdbId, r); return r;
         }
-        const movies = await response.json();
-        if (movies && movies.length > 0) {
-            const movie = movies[0];
-            const result = { found: true, id: movie.id, titleSlug: movie.titleSlug, tmdbId };
-            radarrCache.set(tmdbId, result);
-            return result;
-        }
-        radarrCache.set(tmdbId, { found: false, titleSlug: null, tmdbId });
-        return { found: false, titleSlug: null, tmdbId };
-    } catch (err) {
-        console.error(`${LOG_PREFIX} Radarr Lookup Fehler:`, err);
-        return { found: false, titleSlug: null, tmdbId, error: true };
-    }
+        const lookup = await fetchJson(`${CONFIG.RADARR_URL}/api/v3/movie/lookup/tmdb?tmdbId=${tmdbId}`, CONFIG.RADARR_API_KEY);
+        const r = { found: false, titleSlug: lookup?.titleSlug || null, tmdbId };
+        cache.radarr.set(tmdbId, r); return r;
+    } catch (e) { console.error(`${LOG} Radarr:`, e); return { found: false, titleSlug: null, tmdbId }; }
 }
 
-async function lookupSonarr(tvdbId, seriesName) {
-    const cacheKey = tvdbId || seriesName;
-    if (sonarrCache.has(cacheKey)) return sonarrCache.get(cacheKey);
+async function lookupSonarr(tvdbId, name) {
+    const key = tvdbId || name;
+    if (cache.sonarr.has(key)) return cache.sonarr.get(key);
     try {
         if (tvdbId) {
-            const response = await fetch(`${CONFIG.SONARR_URL}/api/v3/series?tvdbId=${tvdbId}`, {
-                headers: { 'X-Api-Key': CONFIG.SONARR_API_KEY }
-            });
-            if (response.ok) {
-                const series = await response.json();
-                if (series && series.length > 0) {
-                    const s = series[0];
-                    const result = { found: true, id: s.id, titleSlug: s.titleSlug, tvdbId };
-                    sonarrCache.set(cacheKey, result);
-                    return result;
-                }
-            }
-            const lookupResp = await fetch(`${CONFIG.SONARR_URL}/api/v3/series/lookup?term=tvdb:${tvdbId}`, {
-                headers: { 'X-Api-Key': CONFIG.SONARR_API_KEY }
-            });
-            if (lookupResp.ok) {
-                const data = await lookupResp.json();
-                if (data && data.length > 0) {
-                    const result = { found: false, titleSlug: data[0].titleSlug, tvdbId };
-                    sonarrCache.set(cacheKey, result);
-                    return result;
-                }
+            const series = await fetchJson(`${CONFIG.SONARR_URL}/api/v3/series?tvdbId=${tvdbId}`, CONFIG.SONARR_API_KEY);
+            if (series?.length) { const r = { found: true, titleSlug: series[0].titleSlug }; cache.sonarr.set(key, r); return r; }
+            const lookup = await fetchJson(`${CONFIG.SONARR_URL}/api/v3/series/lookup?term=tvdb:${tvdbId}`, CONFIG.SONARR_API_KEY);
+            if (lookup?.length) { const r = { found: false, titleSlug: lookup[0].titleSlug }; cache.sonarr.set(key, r); return r; }
+        }
+        if (name) {
+            const lookup = await fetchJson(`${CONFIG.SONARR_URL}/api/v3/series/lookup?term=${encodeURIComponent(name)}`, CONFIG.SONARR_API_KEY);
+            if (lookup?.length) {
+                const existing = lookup.find(s => s.id > 0);
+                const r = existing ? { found: true, titleSlug: existing.titleSlug } : { found: false, titleSlug: lookup[0].titleSlug };
+                cache.sonarr.set(key, r); return r;
             }
         }
-        if (seriesName) {
-            const lookupResp = await fetch(`${CONFIG.SONARR_URL}/api/v3/series/lookup?term=${encodeURIComponent(seriesName)}`, {
-                headers: { 'X-Api-Key': CONFIG.SONARR_API_KEY }
-            });
-            if (lookupResp.ok) {
-                const data = await lookupResp.json();
-                if (data && data.length > 0) {
-                    const existing = data.find(s => s.id && s.id > 0);
-                    if (existing) {
-                        const result = { found: true, id: existing.id, titleSlug: existing.titleSlug };
-                        sonarrCache.set(cacheKey, result);
-                        return result;
-                    }
-                    const result = { found: false, titleSlug: data[0].titleSlug };
-                    sonarrCache.set(cacheKey, result);
-                    return result;
-                }
-            }
-        }
-        const result = { found: false, titleSlug: null };
-        sonarrCache.set(cacheKey, result);
-        return result;
-    } catch (err) {
-        console.error(`${LOG_PREFIX} Sonarr Lookup Fehler:`, err);
-        return { found: false, titleSlug: null, error: true };
-    }
+        const r = { found: false, titleSlug: null }; cache.sonarr.set(key, r); return r;
+    } catch (e) { console.error(`${LOG} Sonarr:`, e); return { found: false, titleSlug: null }; }
 }
 
-function buildRadarrUrl(radarrResult) {
-    if (radarrResult.found && radarrResult.titleSlug) {
-        return `${CONFIG.RADARR_URL}/movie/${radarrResult.titleSlug}`;
-    }
-    return `${CONFIG.RADARR_URL}/add/new?term=tmdb:${radarrResult.tmdbId}`;
+function buildArrUrl(base, result, pathPrefix, tmdbId) {
+    if (result.found && result.titleSlug) return `${base}/${pathPrefix}/${result.titleSlug}`;
+    if (result.titleSlug) return `${base}/add/new?term=${result.titleSlug}`;
+    return tmdbId ? `${base}/add/new?term=tmdb:${tmdbId}` : base;
 }
 
-function buildSonarrUrl(sonarrResult) {
-    if (sonarrResult.found && sonarrResult.titleSlug) {
-        return `${CONFIG.SONARR_URL}/series/${sonarrResult.titleSlug}`;
-    }
-    if (sonarrResult.titleSlug) {
-        return `${CONFIG.SONARR_URL}/add/new?term=${sonarrResult.titleSlug}`;
-    }
-    return `${CONFIG.SONARR_URL}`;
-}
-
-// ==================== LINK LOGO REPLACEMENT ====================
-
-function replaceWithLogo(linkElement, config) {
-    if (linkElement.hasAttribute(PROCESSED_ATTR)) return;  
-    
-    linkElement.textContent = '';  
-    
-    const img = document.createElement('img');
-    img.src = config.logo;
-    img.alt = config.label;
-    img.title = config.label;
-    img.draggable = false;
-    img.style.cssText = `
-        height: ${config.height};
-        width: auto;
-        object-fit: contain;
-        vertical-align: middle;
-        opacity: 0.85;
-        transition: opacity 0.2s ease;
-    `;  
-    
-    img.addEventListener('mouseenter', () => { img.style.opacity = '1'; });
-    img.addEventListener('mouseleave', () => { img.style.opacity = '0.85'; });  
-    
-    linkElement.appendChild(img);  
-    
-    linkElement.style.cssText += `
-        display: inline-flex;
-        align-items: center;
-        padding: 2px 0px;
-    `;  
-    
-    linkElement.setAttribute(PROCESSED_ATTR, 'true');
-}
-
+// ==================== LINK ERSTELLEN / ERSETZEN ====================
 function createCustomLink(label, url, iconUrl) {
     const link = document.createElement('a');
     link.setAttribute('is', 'emby-linkbutton');
     link.className = 'button-link button-link-color-inherit button-link-fontweight-inherit emby-button button-hoverable';
-    link.href = url;
-    link.target = '_blank';
-    link.rel = 'noopener noreferrer';
-    link.title = label;
-    link.setAttribute(PROCESSED_ATTR, 'true');
-    
-    const img = document.createElement('img');
-    img.src = iconUrl;
-    img.alt = label;
-    img.title = label;
-    img.draggable = false;
-    img.style.cssText = `
-        height: 22px;
-        width: auto;
-        object-fit: contain;
-        vertical-align: middle;
-        opacity: 0.85;
-        transition: opacity 0.2s ease;
-    `;
-    
-    img.addEventListener('mouseenter', () => { img.style.opacity = '1'; });
-    img.addEventListener('mouseleave', () => { img.style.opacity = '0.85'; });
-    
-    link.appendChild(img);
-    
-    link.style.cssText += `
-        display: inline-flex;
-        align-items: center;
-        padding: 2px 0px;
-    `;
-    
+    Object.assign(link, { href: url, target: '_blank', rel: 'noopener noreferrer', title: label });
+    link.setAttribute(PROCESSED, 'true');
+    link.appendChild(createLogoImg(iconUrl, label));
+    styleLinkElement(link);
     return link;
 }
 
-function areLinksReady(links) {
-    if (links.length === 0) return false;  
-    
-    for (const link of links) {
-        if (link.hasAttribute(PROCESSED_ATTR)) continue;  
-        
-        const href = link.href || '';
-        const text = link.textContent.trim();  
-        
-        if (!href || !text) return false;
-    }
-    return true;
+function replaceWithLogo(el, config) {
+    if (el.hasAttribute(PROCESSED)) return;
+    el.textContent = '';
+    el.appendChild(createLogoImg(config.logo, config.label, config.height));
+    styleLinkElement(el);
+    el.setAttribute(PROCESSED, 'true');
 }
 
-// ==================== RT + ARR LINKS HINZUFÜGEN ====================
-
-async function addCustomLinks(linkContainer, visibleView) {
-    // Prüfen ob bereits Custom-Links hinzugefügt wurden
-    if (visibleView.hasAttribute(ARR_PROCESSED_ATTR)) {
-        const processedItemId = visibleView.getAttribute(ARR_PROCESSED_ATTR);
-        if (processedItemId === currentItemId) {
-            return;
-        }
-    }
-    
+// ==================== CUSTOM LINKS (RT + ARR) ====================
+async function addCustomLinks(container, view) {
     const itemId = getItemIdFromUrl();
-    if (!itemId) return;
-    
+    if (!itemId || (view.getAttribute(ARR_PROCESSED) === itemId)) return;
+    if (isProcessing && currentItemId === itemId) return;
+
     currentItemId = itemId;
-    
-    const item = await getEmbyItem(itemId);
-    if (!item) return;
-    
-    console.log(`${LOG_PREFIX} Item: "${item.Name}" (Type: ${item.Type}, ID: ${itemId})`);
-    
-    const tmdbId = getTmdbId(item);
-    const imdbId = getImdbId(item);
-    const customLinks = [];
-    
-    // 1. Rotten Tomatoes Link (falls aktiviert und IMDb ID vorhanden)
-    if (CONFIG.ENABLE_ROTTEN_TOMATOES && imdbId) {
-        const rtSlug = await getRTSlug(imdbId);
-        if (rtSlug) {
-            const rtUrl = `https://www.rottentomatoes.com/${rtSlug}`;
-            const rtIcon = 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/rt.png';
-            customLinks.push(createCustomLink('Rotten Tomatoes', rtUrl, rtIcon));
-            console.log(`${LOG_PREFIX} RT-Link hinzugefügt: ${rtUrl}`);
-        } else {
-            console.log(`${LOG_PREFIX} Kein RT Slug gefunden für IMDb: ${imdbId}`);
+    view.setAttribute(ARR_PROCESSED, itemId);
+    isProcessing = true;
+
+    try {
+        const item = await getEmbyItem(itemId);
+        if (!item) return;
+
+        const tmdbId = getProviderId(item, 'Tmdb'), imdbId = getProviderId(item, 'Imdb');
+        const links = [];
+
+        if (CONFIG.ENABLE_ROTTEN_TOMATOES && imdbId) {
+            const slug = await getRTSlug(imdbId);
+            if (slug) links.push(createCustomLink('Rotten Tomatoes', `https://www.rottentomatoes.com/${slug}`, `${CDN}/rt.png`));
         }
-    }
-    
-    // 2. Radarr Link (nur für Movies)
-    if (item.Type === 'Movie' && CONFIG.RADARR_API_KEY && tmdbId) {
-        const radarrResult = await lookupRadarr(tmdbId);
-        const radarrUrl = buildRadarrUrl(radarrResult);
-        const radarrIcon = 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/radarr.png';
-        customLinks.push(createCustomLink('Radarr', radarrUrl, radarrIcon));
-        console.log(`${LOG_PREFIX} Radarr-Link hinzugefügt: ${radarrUrl}`);
-    }
-    
-    // 3. Sonarr Link (nur für Series)
-    if (item.Type === 'Series' && CONFIG.SONARR_API_KEY) {
-        const tvdbId = getTvdbId(item);
-        const sonarrResult = await lookupSonarr(tvdbId, item.Name);
-        const sonarrUrl = buildSonarrUrl(sonarrResult);
-        const sonarrIcon = 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/sonarr.png';
-        customLinks.push(createCustomLink('Sonarr', sonarrUrl, sonarrIcon));
-        console.log(`${LOG_PREFIX} Sonarr-Link hinzugefügt: ${sonarrUrl} (found: ${sonarrResult.found})`);
-    }
-    
-    // Custom-Links zum Container hinzufügen
-    if (customLinks.length > 0) {
-        customLinks.forEach(link => {
-            linkContainer.appendChild(document.createTextNode(' '));
-            linkContainer.appendChild(link);
-        });
-        
-        visibleView.setAttribute(ARR_PROCESSED_ATTR, itemId);
-        console.log(`${LOG_PREFIX} ${customLinks.length} Custom-Link(s) hinzugefügt.`);
-    }
+
+        if (item.Type === 'Movie' && CONFIG.RADARR_API_KEY && tmdbId) {
+            const r = await lookupRadarr(tmdbId);
+            links.push(createCustomLink('Radarr', buildArrUrl(CONFIG.RADARR_URL, r, 'movie', tmdbId), `${CDN}/radarr.png`));
+        }
+
+        if (item.Type === 'Series' && CONFIG.SONARR_API_KEY) {
+            const r = await lookupSonarr(getProviderId(item, 'Tvdb'), item.Name);
+            links.push(createCustomLink('Sonarr', buildArrUrl(CONFIG.SONARR_URL, r, 'series'), `${CDN}/sonarr.png`));
+        }
+
+        links.forEach(l => { container.appendChild(document.createTextNode(' ')); container.appendChild(l); });
+    } catch (e) { console.error(`${LOG} Custom-Links:`, e); }
+    finally { isProcessing = false; }
 }
 
 // ==================== HAUPTVERARBEITUNG ====================
-
 async function processLinks() {
-    const visibleView = getVisibleDetailView();
-    if (!visibleView) return false;  
-    
-    const linksSection = visibleView.querySelector('.linksSection');
-    if (!linksSection) return false;  
-    
-    const linkContainer = linksSection.querySelector('.itemLinks');
-    if (!linkContainer) return false;  
-    
-    const links = linkContainer.querySelectorAll('a[is="emby-linkbutton"]');
-    if (links.length === 0) return false;  
-    
-    const unprocessedLinks = Array.from(links).filter(
-        l => !l.hasAttribute(PROCESSED_ATTR) || l.hasAttribute(ARR_PROCESSED_ATTR)
-    );  
-    
-    if (!areLinksReady(links) && unprocessedLinks.length > 0) {
-        console.log(`${LOG_PREFIX} Links not ready yet, will retry...`);
-        return false;
-    }  
-    
-    let processedCount = 0;  
-    
+    const view = getVisibleDetailView();
+    const container = view?.querySelector('.linksSection .itemLinks');
+    const links = container?.querySelectorAll('a[is="emby-linkbutton"]');
+    if (!links?.length) return false;
+
+    // Prüfen ob unverarbeitete Links bereit sind
+    const unprocessed = [...links].filter(l => !l.hasAttribute(PROCESSED));
+    if (unprocessed.length && unprocessed.some(l => !l.href || !l.textContent.trim())) return false;
+
+    let count = 0;
     links.forEach(link => {
-        if (link.hasAttribute(PROCESSED_ATTR)) return;  
-        
-        const href = link.href || '';  
-        
-        for (const key in LINK_LOGOS) {
-            const config = LINK_LOGOS[key];
-            if (config.match(href)) {
-                replaceWithLogo(link, config);
-                processedCount++;
-                break;
-            }
+        if (link.hasAttribute(PROCESSED)) return;
+        const href = link.href || '';
+        for (const [domain, config] of Object.entries(LINK_LOGOS)) {
+            if (href.includes(domain)) { replaceWithLogo(link, config); count++; break; }
         }
-    });  
-    
-    if (processedCount > 0 || !visibleView.hasAttribute(ARR_PROCESSED_ATTR)) {
+    });
+
+    if (count > 0 || !view.hasAttribute(ARR_PROCESSED)) {
         // Komma-Textknoten bereinigen
-        const childNodes = Array.from(linkContainer.childNodes);
-        childNodes.forEach(node => {
-            if (node.nodeType === Node.TEXT_NODE) {
-                const trimmed = node.textContent.trim();
-                if (trimmed === ',' || trimmed === ', ' || trimmed === '') {
-                    node.textContent = ' ';
-                }
-            }
-        });  
-        
-        linkContainer.style.cssText += `
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-        `;
-        
-        if (processedCount > 0) {
-            console.log(`${LOG_PREFIX} Replaced ${processedCount} link(s) with logos.`);
-        }
-        
-        // Custom-Links hinzufügen (RT + Radarr/Sonarr)
-        await addCustomLinks(linkContainer, visibleView);
-    }  
-    
+        [...container.childNodes].forEach(n => {
+            if (n.nodeType === Node.TEXT_NODE && /^[,\s]*$/.test(n.textContent)) n.textContent = ' ';
+        });
+        container.style.cssText += 'display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+        if (count) console.log(`${LOG} ${count} Link(s) ersetzt.`);
+        await addCustomLinks(container, view);
+    }
     return true;
 }
 
-// ==================== RETRY LOGIK ====================
-
-async function processWithRetry(attempt = 0, maxAttempts = 15) {
-    if (retryTimer) clearTimeout(retryTimer);  
-    
-    const success = await processLinks();  
-    
-    if (!success && attempt < maxAttempts) {
-        const delay = Math.min(200 + (attempt * 100), 1500);
-        retryTimer = setTimeout(() => {
-            processWithRetry(attempt + 1, maxAttempts);
-        }, delay);
-    } else if (!success) {
-        console.log(`${LOG_PREFIX} Gave up after ${maxAttempts} attempts.`);
-    }
+// ==================== RETRY + DEBOUNCE ====================
+async function processWithRetry(attempt = 0, max = 15) {
+    clearTimeout(retryTimer);
+    if (!await processLinks() && attempt < max)
+        retryTimer = setTimeout(() => processWithRetry(attempt + 1, max), Math.min(200 + attempt * 100, 1500));
 }
 
 function debouncedProcess() {
-    if (debounceTimer) clearTimeout(debounceTimer);
-    if (retryTimer) clearTimeout(retryTimer);  
-    
-    debounceTimer = setTimeout(() => {
-        processWithRetry(0);
-    }, 200);
+    clearTimeout(debounceTimer);
+    clearTimeout(retryTimer);
+    debounceTimer = setTimeout(() => processWithRetry(), 200);
 }
 
-// ==================== MUTATION OBSERVER ====================
-
-const observer = new MutationObserver((mutations) => {
-    let shouldProcess = false;  
-    
-    for (const mutation of mutations) {
-        if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
-            for (const node of mutation.addedNodes) {
-                if (node.nodeType !== Node.ELEMENT_NODE) continue;  
-                
-                if (
-                    node.classList?.contains('linksSection') ||
-                    node.classList?.contains('itemLinks') ||
-                    node.querySelector?.('.linksSection') ||
-                    node.querySelector?.('.itemLinks')
-                ) {
-                    shouldProcess = true;
-                    break;
-                }  
-                
-                if (
-                    node.classList?.contains('view-item-item') ||
-                    node.querySelector?.('.view-item-item')
-                ) {
-                    shouldProcess = true;
-                    break;
-                }
-            }
-        }  
-        
-        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-            const target = mutation.target;
-            if (
-                target.classList?.contains('view-item-item') &&
-                !target.classList.contains('hide')
-            ) {
-                shouldProcess = true;
-            }
-        }  
-        
-        if (shouldProcess) break;
-    }  
-    
-    if (shouldProcess) {
-        debouncedProcess();
+// ==================== OBSERVER + URL-POLLING ====================
+new MutationObserver(mutations => {
+    for (const m of mutations) {
+        if (m.type === 'childList' && [...m.addedNodes].some(n =>
+            n.nodeType === 1 && (n.matches?.('.linksSection,.itemLinks,.view-item-item') ||
+            n.querySelector?.('.linksSection,.itemLinks,.view-item-item'))
+        )) { debouncedProcess(); return; }
+        if (m.type === 'attributes' && m.target.classList?.contains('view-item-item') && !m.target.classList.contains('hide'))
+            { debouncedProcess(); return; }
     }
-});  
+}).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
 
-observer.observe(document.body, {
-    childList: true,
-    subtree: true,
-    attributes: true,
-    attributeFilter: ['class']
-});
+let lastUrl = location.href;
+setInterval(() => { if (location.href !== lastUrl) { lastUrl = location.href; currentItemId = null; debouncedProcess(); } }, 500);
 
-// ==================== URL-POLLING ====================
-
-let lastUrl = window.location.href;
-setInterval(() => {
-    if (window.location.href !== lastUrl) {
-        lastUrl = window.location.href;
-        currentItemId = null;
-        console.log(`${LOG_PREFIX} URL changed, reprocessing...`);
-        debouncedProcess();
-    }
-}, 500);
-
-// ==================== INITIALISIERUNG ====================
-
-debouncedProcess();  
-
-console.log(`${LOG_PREFIX} Initialization complete (mit RT + Radarr/Sonarr Integration).`);
-
+debouncedProcess();
+console.log(`${LOG} Initialisiert.`);
 })();
