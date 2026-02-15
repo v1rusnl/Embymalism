@@ -41,6 +41,11 @@ emby-ratings.js
 
 <img width="691" height="290" alt="image" src="https://github.com/user-attachments/assets/aaa95d69-d6da-413b-8ea3-c9541c278e60" />
 
+emby-media-ratings.js
+
+<img width="490" height="39" alt="image" src="https://github.com/user-attachments/assets/525ae1dd-49a6-4fc4-a72d-527dcaa22678" />
+
+
 
 ## External Addons
 
