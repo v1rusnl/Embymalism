@@ -31,17 +31,15 @@ emby-elsewhere.js
 
 <img width="579" height="117" alt="image" src="https://github.com/user-attachments/assets/ecb64fea-2de5-498b-92a7-1313277fcedc" />
 
+
 emby-linklogos.js
 
-<img width="179" height="69" alt="image" src="https://github.com/user-attachments/assets/a2132845-ade0-42de-bda3-7a8a4223d482" />
+<img width="194" height="63" alt="image" src="https://github.com/user-attachments/assets/bd221ae2-d2f4-49ec-a94c-b94e6dc0ce56" />
+
 
 emby-ratings.js
 
 <img width="691" height="290" alt="image" src="https://github.com/user-attachments/assets/aaa95d69-d6da-413b-8ea3-c9541c278e60" />
-
-emby-arrs.js
-
-<img width="116" height="93" alt="image" src="https://github.com/user-attachments/assets/518a5af5-fe89-4e70-8080-bacf18eb6f52" /> <img width="124" height="91" alt="image" src="https://github.com/user-attachments/assets/e4e4256b-ba6b-43e9-9e9c-d29561d84de0" />
 
 
 ## External Addons
