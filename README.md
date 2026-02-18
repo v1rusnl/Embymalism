@@ -27,19 +27,24 @@ When Emby version changes, I will bump the CSS as soon as I have time to check f
 If you'd like to install addons, then copy the script inside the Addons you want to use into Emby Server /system/dashboard-ui and add it to index.html. 
 Instructions like needed API Keys are at the top of each script.
 
-emby-elsewhere.js
+emby-elsewhere.js (Streams of item available on Streaming Services)
 
 <img width="579" height="117" alt="image" src="https://github.com/user-attachments/assets/ecb64fea-2de5-498b-92a7-1313277fcedc" />
 
 
-emby-linklogos.js
+emby-linklogos.js (Replaces Links with logos, adds Rotten Tomatoes link+logo, add Arr logo if available)
 
 <img width="194" height="63" alt="image" src="https://github.com/user-attachments/assets/bd221ae2-d2f4-49ec-a94c-b94e6dc0ce56" />
 
 
-emby-ratings.js
+emby-ratings.js (Custom Rating providers)
 
 <img width="691" height="290" alt="image" src="https://github.com/user-attachments/assets/aaa95d69-d6da-413b-8ea3-c9541c278e60" />
+
+emby-media-ratings.js (colored Ratings for multiple countries)
+
+<img width="490" height="39" alt="image" src="https://github.com/user-attachments/assets/525ae1dd-49a6-4fc4-a72d-527dcaa22678" />
+
 
 
 ## External Addons
