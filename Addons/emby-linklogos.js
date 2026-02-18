@@ -2,10 +2,8 @@
 * Emby Link Logos Integration (mit Radarr/Sonarr + Rotten Tomatoes)
 * Replaces text links (IMDb, TheMovieDb, Trakt, TheTVDB) with logo icons in Emby detail pages
 * Adds Rotten Tomatoes link via Wikidata SPARQL lookup
-* Adds Radarr/Sonarr links directly to the links section -> Set up your API keys and URLs in the Config at the top of the script
-* Copy script inside /system/dashboard-ui/ and add <script src="emby-linklogos.js" defer></script> in index.html before </body>
-*/  
-
+* Adds Radarr/Sonarr links directly to the links section
+*/
 (function () {
 'use strict';
 
@@ -19,10 +17,11 @@ const CONFIG = {
 };
 // ==================== CONFIGURATION END ====================
 
-const LOG = '🔗 Emby Link Logos:';
+const LOG = 'Emby Link Logos:';
 const CDN = 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo';
 const PROCESSED = 'data-logo-processed';
-const ARR_PROCESSED = 'data-arr-processed';
+const CUSTOM_LINK = 'data-custom-link';       // Marker auf jedem eingefügten Custom-Link
+const CUSTOM_DONE = 'data-custom-done';       // Marker auf dem Container nach Erfolg
 
 const LINK_LOGOS = {
     'imdb.com':       { logo: `${CDN}/IMDb_noframe.png`, label: 'IMDb',    height: '20px' },
@@ -57,6 +56,11 @@ function getProviderId(item, key) {
 
 function getVisibleDetailView() {
     return document.querySelector('.view-item-item:not(.hide)') || null;
+}
+
+// FIX: Eigener Helper zum frischen Abfragen des Link-Containers
+function freshLinkContainer() {
+    return getVisibleDetailView()?.querySelector('.linksSection .itemLinks') || null;
 }
 
 // ==================== LOGO-IMG ERSTELLEN ====================
@@ -143,6 +147,7 @@ function createCustomLink(label, url, iconUrl) {
     link.className = 'button-link button-link-color-inherit button-link-fontweight-inherit emby-button button-hoverable';
     Object.assign(link, { href: url, target: '_blank', rel: 'noopener noreferrer', title: label });
     link.setAttribute(PROCESSED, 'true');
+    link.setAttribute(CUSTOM_LINK, label);        // ← FIX: Marker für Erkennung
     link.appendChild(createLogoImg(iconUrl, label));
     styleLinkElement(link);
     return link;
@@ -157,40 +162,65 @@ function replaceWithLogo(el, config) {
 }
 
 // ==================== CUSTOM LINKS (RT + ARR) ====================
-async function addCustomLinks(container, view) {
-    const itemId = getItemIdFromUrl();
-    if (!itemId || (view.getAttribute(ARR_PROCESSED) === itemId)) return;
-    if (isProcessing && currentItemId === itemId) return;
-
+// FIX: Komplett überarbeitet — keine vorzeitige Markierung, frische DOM-Abfragen
+async function addCustomLinks(itemId) {
+    if (isProcessing && currentItemId === itemId) return false;
     currentItemId = itemId;
-    view.setAttribute(ARR_PROCESSED, itemId);
     isProcessing = true;
 
     try {
         const item = await getEmbyItem(itemId);
-        if (!item) return;
+        if (!item) return false;                   // ← FIX: kein Marker → Retry möglich
 
-        const tmdbId = getProviderId(item, 'Tmdb'), imdbId = getProviderId(item, 'Imdb');
-        const links = [];
+        const tmdbId = getProviderId(item, 'Tmdb');
+        const imdbId = getProviderId(item, 'Imdb');
+        const newLinks = [];
 
         if (CONFIG.ENABLE_ROTTEN_TOMATOES && imdbId) {
             const slug = await getRTSlug(imdbId);
-            if (slug) links.push(createCustomLink('Rotten Tomatoes', `https://www.rottentomatoes.com/${slug}`, `${CDN}/rt.png`));
+            if (slug) newLinks.push(createCustomLink('Rotten Tomatoes',
+                `https://www.rottentomatoes.com/${slug}`, `${CDN}/rt.png`));
         }
 
         if (item.Type === 'Movie' && CONFIG.RADARR_API_KEY && tmdbId) {
             const r = await lookupRadarr(tmdbId);
-            links.push(createCustomLink('Radarr', buildArrUrl(CONFIG.RADARR_URL, r, 'movie', tmdbId), `${CDN}/radarr.png`));
+            newLinks.push(createCustomLink('Radarr',
+                buildArrUrl(CONFIG.RADARR_URL, r, 'movie', tmdbId), `${CDN}/radarr.png`));
         }
 
         if (item.Type === 'Series' && CONFIG.SONARR_API_KEY) {
             const r = await lookupSonarr(getProviderId(item, 'Tvdb'), item.Name);
-            links.push(createCustomLink('Sonarr', buildArrUrl(CONFIG.SONARR_URL, r, 'series'), `${CDN}/sonarr.png`));
+            newLinks.push(createCustomLink('Sonarr',
+                buildArrUrl(CONFIG.SONARR_URL, r, 'series'), `${CDN}/sonarr.png`));
         }
 
-        links.forEach(l => { container.appendChild(document.createTextNode(' ')); container.appendChild(l); });
-    } catch (e) { console.error(`${LOG} Custom-Links:`, e); }
-    finally { isProcessing = false; }
+        // FIX 1: Prüfen ob User inzwischen navigiert hat
+        if (getItemIdFromUrl() !== itemId) return false;
+
+        // FIX 2: Container FRISCH abfragen — alte Referenz kann stale sein
+        const container = freshLinkContainer();
+        if (!container) return false;
+
+        // FIX 3: Prüfen ob Custom Links bereits vorhanden (paralleler Call)
+        if (container.querySelector(`[${CUSTOM_LINK}]`)) return true;
+
+        // Links einfügen
+        newLinks.forEach(l => {
+            container.appendChild(document.createTextNode(' '));
+            container.appendChild(l);
+        });
+
+        // FIX 4: Marker ERST NACH erfolgreichem Einfügen setzen
+        container.setAttribute(CUSTOM_DONE, itemId);
+
+        if (newLinks.length) console.log(`${LOG} ${newLinks.length} Custom-Link(s) hinzugefügt.`);
+        return true;
+    } catch (e) {
+        console.error(`${LOG} Custom-Links:`, e);
+        return false;                              // ← FIX: false → Retry wird ausgelöst
+    } finally {
+        isProcessing = false;
+    }
 }
 
 // ==================== HAUPTVERARBEITUNG ====================
@@ -213,45 +243,71 @@ async function processLinks() {
         }
     });
 
-    if (count > 0 || !view.hasAttribute(ARR_PROCESSED)) {
-        // Komma-Textknoten bereinigen
-        [...container.childNodes].forEach(n => {
-            if (n.nodeType === Node.TEXT_NODE && /^[,\s]*$/.test(n.textContent)) n.textContent = ' ';
-        });
-        container.style.cssText += 'display:flex;align-items:center;gap:8px;flex-wrap:wrap';
-        if (count) console.log(`${LOG} ${count} Link(s) ersetzt.`);
-        await addCustomLinks(container, view);
+    // Komma-Textknoten bereinigen
+    [...container.childNodes].forEach(n => {
+        if (n.nodeType === Node.TEXT_NODE && /^[,\s]*$/.test(n.textContent)) n.textContent = ' ';
+    });
+    container.style.cssText += 'display:flex;align-items:center;gap:8px;flex-wrap:wrap';
+    if (count) console.log(`${LOG} ${count} Link(s) ersetzt.`);
+
+    // FIX: Custom Links über tatsächlichen DOM-Zustand prüfen statt View-Attribut
+    const itemId = getItemIdFromUrl();
+    const hasCustomLinks = container.querySelector(`[${CUSTOM_LINK}]`);
+    const alreadyDone = container.getAttribute(CUSTOM_DONE) === itemId;
+
+    if (itemId && !hasCustomLinks && !alreadyDone) {
+        const success = await addCustomLinks(itemId);
+        if (!success) return false;                // ← FIX: Retry auslösen bei Fehler
     }
+
     return true;
 }
 
 // ==================== RETRY + DEBOUNCE ====================
-async function processWithRetry(attempt = 0, max = 15) {
+async function processWithRetry(attempt = 0, max = 25) {
     clearTimeout(retryTimer);
     if (!await processLinks() && attempt < max)
-        retryTimer = setTimeout(() => processWithRetry(attempt + 1, max), Math.min(200 + attempt * 100, 1500));
+        retryTimer = setTimeout(() => processWithRetry(attempt + 1, max),
+            Math.min(150 + attempt * 100, 1500));
 }
 
 function debouncedProcess() {
     clearTimeout(debounceTimer);
     clearTimeout(retryTimer);
-    debounceTimer = setTimeout(() => processWithRetry(), 200);
+    debounceTimer = setTimeout(() => processWithRetry(), 150);
 }
 
-// ==================== OBSERVER + URL-POLLING ====================
+// ==================== OBSERVER + URL-CHANGE ====================
 new MutationObserver(mutations => {
     for (const m of mutations) {
-        if (m.type === 'childList' && [...m.addedNodes].some(n =>
-            n.nodeType === 1 && (n.matches?.('.linksSection,.itemLinks,.view-item-item') ||
-            n.querySelector?.('.linksSection,.itemLinks,.view-item-item'))
-        )) { debouncedProcess(); return; }
-        if (m.type === 'attributes' && m.target.classList?.contains('view-item-item') && !m.target.classList.contains('hide'))
-            { debouncedProcess(); return; }
+        if (m.type === 'childList') {
+            // FIX: Eigene Custom-Link-Einfügungen ignorieren
+            const relevant = [...m.addedNodes].some(n =>
+                n.nodeType === 1 && !n.hasAttribute?.(CUSTOM_LINK) && (
+                    n.matches?.('.linksSection,.itemLinks,.view-item-item') ||
+                    n.querySelector?.('.linksSection,.itemLinks,.view-item-item')
+                )
+            );
+            if (relevant) { debouncedProcess(); return; }
+        }
+        if (m.type === 'attributes'
+            && m.target.classList?.contains('view-item-item')
+            && !m.target.classList.contains('hide')) {
+            debouncedProcess(); return;
+        }
     }
 }).observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
 
+// FIX: Schnellere URL-Erkennung via popstate + kürzeres Polling
 let lastUrl = location.href;
-setInterval(() => { if (location.href !== lastUrl) { lastUrl = location.href; currentItemId = null; debouncedProcess(); } }, 500);
+function onUrlChange() {
+    if (location.href === lastUrl) return;
+    lastUrl = location.href;
+    currentItemId = null;
+    debouncedProcess();
+}
+window.addEventListener('popstate', onUrlChange);
+setInterval(onUrlChange, 300);
 
 debouncedProcess();
 console.log(`${LOG} Initialisiert.`);
