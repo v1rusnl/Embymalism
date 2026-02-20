@@ -821,6 +821,7 @@ div.peopleSection .coveredImage {
   width: auto!important;
   min-width: 100px;
   height: 5em !important;
+  margin-top: .75em !important;
 }
 
 @media (min-width: 48em) {
