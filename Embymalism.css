@@ -1,4 +1,4 @@
-/* ===== Embymalism_4.9.3.0 20260208 ===== */
+/* ===== Embymalism_4.9.3.0 20260220 ===== */
 
 @import url('https://fonts.googleapis.com/css2?family=Sofia+Sans:ital,wght@0,1..1000;1,1..1000&display=swap');
 
@@ -782,12 +782,13 @@ div.peopleSection .coveredImage {
 .detailImageContainer-main {
   overflow: visible !important;
   padding: 20px;
-  margin-right: 2.5em !important;
+  margin-right: 3.5em !important;
   margin-bottom: 30px !important;
+  margin-left: 2.7em !important;
 }
 
 .detailImageContainer-main.detailImageContainer-portrait {
-  max-width: 300px;
+  max-width: 317px;
 }
 
 .detailImageContainerCard-cardBox {
