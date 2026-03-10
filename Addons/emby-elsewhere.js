@@ -2,26 +2,22 @@
  * Emby Elsewhere Integration
  * Adapted Jellyfin JS snippet -> THX to https://github.com/n00bcodr/Jellyfin-Elsewhere
  * Shows available Streaming Providers for Library items
- * Add your TMDB API Key in line 15 and choose your settings
- * Copy script inside /system/dashboard-ui/ and add <script src="emby-elsewehre.js" defer></script> in index.html before </body>
+ * Add <script src="Elsewhere.js" defer></script> in index.html before </body>
  */
-
 (function() {
     'use strict';
-
     /* -------------- Configuration - Edit these values -------------- */
-
     const TMDB_API_KEY = 'YOUR_API_KEY'; // Replace with your actual API key
     const DEFAULT_REGION = 'US'; // Default region to show results for; see list https://github.com/n00bcodr/Jellyfin-Elsewhere/blob/main/resources/regions.txt
     const DEFAULT_PROVIDERS = []; // Default providers to show (empty = show all); see list: https://github.com/n00bcodr/Jellyfin-Elsewhere/blob/main/resources/providers.txt
     const IGNORE_PROVIDERS = []; // Providers to ignore from default region (supports regex, e.g. '.*with Ads')
     
-    // NEW: Include rent and buy options
     const INCLUDE_RENT = true;  // Set to false to hide rental options
     const INCLUDE_BUY = true;   // Set to false to hide purchase options
-
+	
+	const CORS_PROXY_URL = ''; // z.B. 'https://cors.domain.com/proxy/' empty = Deep-Links deactivated
+	
     /*---------------- End of configuration ----------------*/
-
     const isUserScript = typeof GM_xmlhttpRequest !== 'undefined';
     let userRegion = DEFAULT_REGION;
     let userRegions = [];
@@ -29,9 +25,7 @@
     let availableRegions = {};
     let availableProviders = [];
     let lastProcessedId = null;
-
     console.log('🎬 Emby Elsewhere starting...');
-
     // HTTP request function that works in both environments
     function makeRequest(options) {
         if (isUserScript) {
@@ -63,7 +57,6 @@
             });
         }
     }
-
     // Load regions and providers from GitHub repo
     function loadRegionsAndProviders() {
         // Load regions
@@ -86,7 +79,6 @@
             },
             onerror: () => setFallbackRegions()
         });
-
         // Load providers
         makeRequest({
             method: 'GET',
@@ -102,7 +94,6 @@
             onerror: () => setFallbackProviders()
         });
     }
-
     function setFallbackRegions() {
         availableRegions = {
             'US': 'United States',
@@ -127,7 +118,6 @@
             'CH': 'Switzerland'
         };
     }
-
     function setFallbackProviders() {
         availableProviders = [
             'Netflix', 'Amazon Prime Video', 'Disney Plus', 'HBO Max',
@@ -135,25 +125,24 @@
             'JioCinema', 'Disney+ Hotstar', 'ZEE5', 'SonyLIV'
         ];
     }
-
     // Create Material Icon element
     function createMaterialIcon(iconName, size = '18px') {
         const icon = document.createElement('span');
-        icon.className = 'md-icon';
+        icon.className = 'md-icon ee-material-icon';
         icon.textContent = iconName;
         icon.style.fontSize = size;
         icon.style.lineHeight = '1';
         return icon;
     }
-
     // Create autocomplete input with improved keyboard navigation
     function createAutocompleteInput(placeholder, options, selectedValues, onSelect) {
         const container = document.createElement('div');
+        container.className = 'ee-autocomplete-container';
         container.style.cssText = 'position: relative; margin-bottom: 6px;';
-
         const input = document.createElement('input');
         input.type = 'text';
         input.placeholder = placeholder;
+        input.className = 'ee-autocomplete-input';
         input.style.cssText = `
             width: 100%;
             padding: 10px;
@@ -164,8 +153,8 @@
             color: #fff;
             font-size: 14px;
         `;
-
         const dropdown = document.createElement('div');
+        dropdown.className = 'ee-autocomplete-dropdown';
         dropdown.style.cssText = `
             position: absolute;
             top: 100%;
@@ -180,23 +169,21 @@
             display: none;
             z-index: 1000;
         `;
-
         const selectedContainer = document.createElement('div');
+        selectedContainer.className = 'ee-autocomplete-selected-container';
         selectedContainer.style.cssText = `
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
             margin-top: 6px;
         `;
-
         let selectedIndex = -1;
         let filteredOptions = [];
-
         function updateSelected() {
             selectedContainer.innerHTML = '';
             selectedValues.forEach(value => {
                 const tag = document.createElement('span');
-                tag.className = 'selected-tag';
+                tag.className = 'ee-selected-tag';
                 tag.style.cssText = `
                     background: #0078d4;
                     color: white;
@@ -208,8 +195,8 @@
                     gap: 6px;
                 `;
                 tag.textContent = value;
-
                 const remove = document.createElement('span');
+                remove.className = 'ee-tag-remove';
                 remove.textContent = '×';
                 remove.style.cssText = 'cursor: pointer; font-weight: bold; font-size: 14px;';
                 remove.onclick = () => {
@@ -223,15 +210,14 @@
                 selectedContainer.appendChild(tag);
             });
         }
-
         function showDropdown(opts) {
             dropdown.innerHTML = '';
             dropdown.style.display = 'block';
             filteredOptions = opts;
             selectedIndex = -1;
-
             opts.forEach((option, index) => {
                 const item = document.createElement('div');
+                item.className = 'ee-autocomplete-item';
                 item.textContent = option;
                 item.style.cssText = `
                     padding: 10px;
@@ -241,28 +227,23 @@
                     font-size: 14px;
                 `;
                 item.dataset.index = index;
-
                 item.onmouseenter = () => {
                     clearSelection();
                     item.style.background = '#333';
                     selectedIndex = index;
                 };
-
                 item.onmouseleave = () => {
                     item.style.background = '#1a1a1a';
                 };
-
                 item.onclick = () => selectOption(option);
                 dropdown.appendChild(item);
             });
         }
-
         function clearSelection() {
-            dropdown.querySelectorAll('div').forEach(item => {
+            dropdown.querySelectorAll('.ee-autocomplete-item').forEach(item => {
                 item.style.background = '#1a1a1a';
             });
         }
-
         function updateSelection() {
             clearSelection();
             if (selectedIndex >= 0 && selectedIndex < filteredOptions.length) {
@@ -273,7 +254,6 @@
                 }
             }
         }
-
         function selectOption(option) {
             if (!selectedValues.includes(option)) {
                 selectedValues.push(option);
@@ -284,23 +264,19 @@
             dropdown.style.display = 'none';
             selectedIndex = -1;
         }
-
         input.oninput = () => {
             const value = input.value.toLowerCase();
             if (value.length === 0) {
                 dropdown.style.display = 'none';
                 return;
             }
-
             const filtered = options.filter(option =>
                 option.toLowerCase().includes(value) && !selectedValues.includes(option)
             );
             showDropdown(filtered);
         };
-
         input.onkeydown = (e) => {
             if (dropdown.style.display === 'none') return;
-
             switch (e.key) {
                 case 'ArrowDown':
                     e.preventDefault();
@@ -324,7 +300,6 @@
                     break;
             }
         };
-
         input.onblur = () => {
             setTimeout(() => {
                 if (!dropdown.contains(document.activeElement)) {
@@ -332,22 +307,19 @@
                 }
             }, 200);
         };
-
         container.appendChild(input);
         container.appendChild(dropdown);
         container.appendChild(selectedContainer);
-
         updateSelected();
         return container;
     }
-
     // Create settings modal with darker theme
     function createSettingsModal() {
         const existingModal = document.getElementById('streaming-settings-modal');
         if (existingModal) existingModal.remove();
-
         const modal = document.createElement('div');
         modal.id = 'streaming-settings-modal';
+        modal.className = 'ee-settings-modal';
         modal.style.cssText = `
             position: fixed;
             top: 0;
@@ -360,8 +332,8 @@
             align-items: center;
             justify-content: center;
         `;
-
         const content = document.createElement('div');
+        content.className = 'ee-settings-modal-content';
         content.style.cssText = `
             background: #181818;
             padding: 20px;
@@ -374,38 +346,31 @@
             border: 1px solid #333;
             box-shadow: 0 8px 32px rgba(0,0,0,0.5);
         `;
-
         content.innerHTML = `
-            <h3 style="margin-top: 0; margin-bottom: 16px; color: #fff; font-size: 18px; font-weight: bolder;">Streaming-Einstellungen</h3>
-
-            <div style="margin-bottom: 16px;">
-                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #ccc;">Standard-Suchland</label>
-                <select id="region-select" style="width: 100%; padding: 12px; border: 1px solid #444; border-radius: 6px; background: #2a2a2a; color: #fff; font-size: 14px;">
+            <h3 class="ee-settings-title" style="margin-top: 0; margin-bottom: 16px; color: #fff; font-size: 18px; font-weight: bolder;">Streaming-Einstellungen</h3>
+            <div class="ee-settings-field" style="margin-bottom: 16px;">
+                <label class="ee-settings-label" style="display: block; margin-bottom: 6px; font-weight: 600; color: #ccc;">Standard-Suchland</label>
+                <select id="region-select" class="ee-region-select" style="width: 100%; padding: 12px; border: 1px solid #444; border-radius: 6px; background: #2a2a2a; color: #fff; font-size: 14px;">
                     ${Object.entries(availableRegions).map(([code, name]) =>
                         `<option value="${code}" ${code === userRegion ? 'selected' : ''}>${name}</option>`
                     ).join('')}
                 </select>
             </div>
-
-            <div style="margin-bottom: 16px;">
-                <label style="display: block; margin-bottom: 5px; font-weight: 600; color: #ccc;">Weitere Länder durchsuchen (leer = nur Standard)</label>
-                <div id="regions-autocomplete"></div>
+            <div class="ee-settings-field" style="margin-bottom: 16px;">
+                <label class="ee-settings-label" style="display: block; margin-bottom: 5px; font-weight: 600; color: #ccc;">Weitere Länder durchsuchen (leer = nur Standard)</label>
+                <div id="regions-autocomplete" class="ee-regions-autocomplete"></div>
             </div>
-
-           <div style="margin-bottom: 16px;">
-                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #ccc;">Anbieter (leer = alle anzeigen)</label>
-                <div id="services-autocomplete"></div>
+           <div class="ee-settings-field" style="margin-bottom: 16px;">
+                <label class="ee-settings-label" style="display: block; margin-bottom: 6px; font-weight: 600; color: #ccc;">Anbieter (leer = alle anzeigen)</label>
+                <div id="services-autocomplete" class="ee-services-autocomplete"></div>
             </div>
-
-            <div style="display: flex; gap: 12px; justify-content: flex-end;">
-                <button id="cancel-settings" style="padding: 10px 18px; border: 1px solid #444; background: #2a2a2a; color: #fff; border-radius: 6px; cursor: pointer; font-size: 14px;">Abbrechen</button>
-                <button id="save-settings" style="padding: 10px 18px; border: none; background: #0078d4; color: white; border-radius: 6px; cursor: pointer; font-size: 14px;">Speichern</button>
+            <div class="ee-settings-actions" style="display: flex; gap: 12px; justify-content: flex-end;">
+                <button id="cancel-settings" class="ee-btn ee-btn-cancel" style="padding: 10px 18px; border: 1px solid #444; background: #2a2a2a; color: #fff; border-radius: 6px; cursor: pointer; font-size: 14px;">Abbrechen</button>
+                <button id="save-settings" class="ee-btn ee-btn-save" style="padding: 10px 18px; border: none; background: #0078d4; color: white; border-radius: 6px; cursor: pointer; font-size: 14px;">Speichern</button>
             </div>
         `;
-
         modal.appendChild(content);
         document.body.appendChild(modal);
-
         // Add autocomplete for regions
         const regionsContainer = content.querySelector('#regions-autocomplete');
         const regionOptions = Object.entries(availableRegions).map(([code, name]) => `${name} (${code})`);
@@ -418,7 +383,6 @@
             }
         );
         regionsContainer.appendChild(regionsAutocomplete);
-
         // Add autocomplete for services
         const servicesContainer = content.querySelector('#services-autocomplete');
         const servicesAutocomplete = createAutocompleteInput(
@@ -430,18 +394,15 @@
             }
         );
         servicesContainer.appendChild(servicesAutocomplete);
-
         // Event listeners
         document.getElementById('cancel-settings').onclick = () => {
             modal.style.display = 'none';
         };
-
         document.getElementById('save-settings').onclick = () => {
             userRegion = document.getElementById('region-select').value;
-
             // Get selected regions from autocomplete
             const selectedRegions = [];
-            regionsContainer.querySelectorAll('.selected-tag').forEach(tag => {
+            regionsContainer.querySelectorAll('.ee-selected-tag').forEach(tag => {
                 const text = tag.textContent.replace('×', '').trim();
                 const match = text.match(/\(([A-Z]{2})\)$/);
                 if (match) {
@@ -449,14 +410,12 @@
                 }
             });
             userRegions = selectedRegions;
-
             // Get selected services from autocomplete
             const selectedServices = [];
-            servicesContainer.querySelectorAll('.selected-tag').forEach(tag => {
+            servicesContainer.querySelectorAll('.ee-selected-tag').forEach(tag => {
                 selectedServices.push(tag.textContent.replace('×', '').trim());
             });
             userServices = selectedServices;
-
             modal.style.display = 'none';
             localStorage.setItem('streaming-settings', JSON.stringify({
                 region: userRegion,
@@ -464,7 +423,6 @@
                 services: userServices
             }));
         };
-
         // Close on backdrop click
         modal.onclick = (e) => {
             if (e.target === modal) {
@@ -472,7 +430,6 @@
             }
         };
     }
-
     // Load saved settings
     function loadSettings() {
         const saved = localStorage.getItem('streaming-settings');
@@ -487,13 +444,11 @@
             }
         }
     }
-
     // Get all providers from region data with combined category tags
     // Providers are collected once and tagged with ALL their available categories
     // Sorted: Flatrate/Free/Ads first, then Rent/Buy only providers
     function getAllProvidersFromRegion(regionData) {
         const providerMap = new Map(); // provider_id -> provider data with categories array
-
         // Category configuration with sort priority
         // Priority 1 = Streaming (shown first), Priority 2 = Transactional (shown after)
         const categoryConfig = [
@@ -503,7 +458,6 @@
             { key: 'rent', label: 'Leihen', include: INCLUDE_RENT, priority: 2 },
             { key: 'buy', label: 'Kaufen', include: INCLUDE_BUY, priority: 2 }
         ];
-
         // Collect all providers and their categories
         categoryConfig.forEach(cat => {
             if (!cat.include) return;
@@ -528,7 +482,6 @@
                 }
             });
         });
-
         // Convert to array
         const providers = Array.from(providerMap.values());
         
@@ -541,10 +494,8 @@
             }
             return (a.display_priority || 999) - (b.display_priority || 999);
         });
-
         return providers;
     }
-
     // Check if region has any services based on config
     function hasAnyServices(regionData) {
         if (!regionData) return false;
@@ -557,7 +508,6 @@
         
         return hasFlatrate || hasFree || hasAds || hasRent || hasBuy;
     }
-
     // Generate availability text based on what's available
     function getAvailabilityText(regionData, regionName) {
         if (!regionData) return `Nicht verfügbar in ${regionName}`;
@@ -579,10 +529,11 @@
         
         return `Nicht auf Streaming-Diensten in ${regionName} verfügbar`;
     }
-
     // Create service badge with combined category indicators (rent AND buy badges if both available)
     function createServiceBadge(service, tmdbId, mediaType) {
         const badge = document.createElement('div');
+        badge.className = 'ee-service-badge';
+		badge.setAttribute('data-logo-path', service.logo_path);
         badge.style.cssText = `
             display: inline-flex;
             align-items: center;
@@ -599,8 +550,8 @@
             backdrop-filter: blur(10px);
             position: relative;
         `;
-
         const logo = document.createElement('img');
+        logo.className = 'ee-service-logo';
         logo.src = `https://image.tmdb.org/t/p/w92${service.logo_path}`;
         logo.alt = service.provider_name;
         logo.style.cssText = `
@@ -610,14 +561,12 @@
             object-fit: contain;
             border-radius: 4px;
         `;
-
         logo.onerror = () => logo.style.display = 'none';
         badge.appendChild(logo);
-
         const text = document.createElement('span');
+        text.className = 'ee-service-name';
         text.textContent = service.provider_name;
         badge.appendChild(text);
-
         // Check which transactional categories are available for this provider
         const categories = service.categories || [];
         const hasRent = categories.includes('rent');
@@ -626,6 +575,7 @@
         // Only show badges for rent/buy (not for flatrate/free/ads)
         if (hasRent || hasBuy) {
             const badgeContainer = document.createElement('span');
+            badgeContainer.className = 'ee-category-badges';
             badgeContainer.style.cssText = `
                 display: inline-flex;
                 gap: 3px;
@@ -635,6 +585,7 @@
             // Add RENT badge (orange) if available
             if (hasRent) {
                 const rentBadge = document.createElement('span');
+                rentBadge.className = 'ee-category-badge ee-category-rent';
                 rentBadge.textContent = 'R';
                 rentBadge.title = 'Zum Leihen';
                 rentBadge.style.cssText = `
@@ -651,6 +602,7 @@
             // Add BUY badge (green) if available
             if (hasBuy) {
                 const buyBadge = document.createElement('span');
+                buyBadge.className = 'ee-category-badge ee-category-buy';
                 buyBadge.textContent = 'B';
                 buyBadge.title = 'Zum Kaufen';
                 buyBadge.style.cssText = `
@@ -666,32 +618,26 @@
             
             badge.appendChild(badgeContainer);
         }
-
         // Hover effects
         badge.onmouseenter = () => {
             badge.style.transform = 'translateY(-2px)';
             badge.style.background = 'rgba(255, 255, 255, 0.2)';
             badge.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)';
         };
-
         badge.onmouseleave = () => {
             badge.style.transform = 'translateY(0)';
             badge.style.background = 'rgba(255, 255, 255, 0.1)';
             badge.style.boxShadow = 'none';
         };
-
         return badge;
     }
-
     // Fetch streaming data
     function fetchStreamingData(tmdbId, mediaType, callback) {
         if (!TMDB_API_KEY || TMDB_API_KEY === 'YOUR_TMDB_API_KEY_HERE') {
             callback('Bitte TMDB API Key im Script eintragen');
             return;
         }
-
         const url = `https://api.themoviedb.org/3/${mediaType}/${tmdbId}/watch/providers?api_key=${TMDB_API_KEY}`;
-
         makeRequest({
             method: 'GET',
             url: url,
@@ -710,41 +656,126 @@
             onerror: () => callback('Netzwerkfehler')
         });
     }
+	
+	    // Extract real streaming URL from JustWatch click URL's 'r=' parameter
+    function extractRealUrl(justWatchUrl) {
+        try {
+            const match = justWatchUrl.match(/[?&]r=([^&]+)/);
+            if (match) {
+                return decodeURIComponent(match[1]);
+            }
+        } catch (e) {}
+        return justWatchUrl;
+    }
 
+    // Parse TMDB watch page HTML to extract provider deep links
+    function parseDeepLinksFromHTML(html) {
+        const deepLinks = {};
+        try {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const providerLinks = doc.querySelectorAll('ul.providers li a[href*="click.justwatch.com"]');
+
+            providerLinks.forEach(anchor => {
+                const img = anchor.querySelector('img');
+                if (!img) return;
+
+                const imgSrc = img.getAttribute('src') || '';
+                // Extract logo path: "/pgjz7bzfBq4nFDu8JJDLBoUVAX8.jpg" from full TMDB image URL
+                const logoMatch = imgSrc.match(/\/t\/p\/[^/]+(\/[^?]+)/);
+                if (!logoMatch) return;
+
+                const logoPath = logoMatch[1];
+                if (deepLinks[logoPath]) return; // first match per provider wins
+
+                const href = anchor.getAttribute('href') || '';
+                deepLinks[logoPath] = extractRealUrl(href);
+            });
+        } catch (e) {
+            console.log('🎬 Emby Elsewhere: Error parsing deep links:', e);
+        }
+        return deepLinks;
+    }
+
+    // Fetch TMDB watch page via CORS proxy and apply deep links to badges
+    function fetchAndApplyDeepLinks(container, tmdbWatchUrl) {
+        if (!CORS_PROXY_URL || !tmdbWatchUrl) return;
+
+        const proxyUrl = CORS_PROXY_URL + tmdbWatchUrl;
+        console.log('🎬 Emby Elsewhere: Resolving deep links via', proxyUrl);
+
+        makeRequest({
+            method: 'GET',
+            url: proxyUrl,
+            onload: (response) => {
+                if (response.status === 200) {
+                    const deepLinks = parseDeepLinksFromHTML(response.responseText);
+                    applyDeepLinksToContainer(container, deepLinks);
+                }
+            },
+            onerror: () => {
+                console.log('🎬 Emby Elsewhere: Deep link fetch failed');
+            }
+        });
+    }
+
+    // Apply resolved deep links to provider badges
+    function applyDeepLinksToContainer(container, deepLinks) {
+        if (!deepLinks || Object.keys(deepLinks).length === 0) return;
+
+        const badges = container.querySelectorAll('.ee-service-badge[data-logo-path]');
+        let applied = 0;
+
+        badges.forEach(badge => {
+            const logoPath = badge.getAttribute('data-logo-path');
+            if (logoPath && deepLinks[logoPath]) {
+                const url = deepLinks[logoPath];
+                const providerName = badge.querySelector('.ee-service-name')?.textContent || 'Anbieter';
+
+                badge.style.cursor = 'pointer';
+                badge.title = url;
+                badge.onclick = (e) => {
+                    e.stopPropagation();
+                    window.open(url, '_blank', 'noopener');
+                };
+                applied++;
+            }
+        });
+
+        console.log(`🎬 Emby Elsewhere: Applied ${applied} deep links`);
+    }
+	
     // Process streaming data for default region (auto-load)
     function processDefaultRegionData(data, tmdbId, mediaType) {
         const regionData = data.results[DEFAULT_REGION];
         const regionName = availableRegions[DEFAULT_REGION] || DEFAULT_REGION;
-
         const container = document.createElement('div');
+        container.className = 'ee-region-container ee-default-region';
         container.style.cssText = `
             margin: 1em 25px;
             padding: 12px;
             background: rgba(0, 0, 0, 0.3);
             border-radius: 8px;
             border: 0px solid rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(10px) !important;
             position: relative;
         `;
-
         // Create header with title and controls
         const header = document.createElement('div');
+        header.className = 'ee-region-header';
         header.style.cssText = `
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
         `;
-
         // Create clickable title that links to JustWatch
         const title = document.createElement('a');
-
+        title.className = 'ee-region-title';
         // Check if services are available in default region
         const hasServices = hasAnyServices(regionData);
-
         // Update title text based on availability
         title.textContent = getAvailabilityText(regionData, regionName);
-
         title.style.cssText = `
             font-weight: 600;
             font-size: 14px;
@@ -753,28 +784,26 @@
             color: #fff;
             flex: 1;
         `;
-
         // Add JustWatch link if available
         if (regionData && regionData.link) {
             title.href = regionData.link;
             title.target = '_blank';
             title.title = 'Auf JustWatch ansehen';
         }
-
         // Create controls container
         const controls = document.createElement('div');
+        controls.className = 'ee-controls';
         controls.style.cssText = `
             display: flex;
             gap: 8px;
             align-items: center;
         `;
-
         // Search button with Material Icon
         const searchButton = document.createElement('button');
+        searchButton.className = 'ee-btn ee-btn-search';
         const searchIcon = createMaterialIcon('search', '16px');
         searchButton.appendChild(searchIcon);
         searchButton.appendChild(document.createTextNode(''));
-
         searchButton.style.cssText = `
             display: flex;
             align-items: center;
@@ -789,20 +818,17 @@
             cursor: pointer;
             transition: all 300ms ease;
         `;
-
         searchButton.onmouseenter = () => {
             searchButton.style.background = 'rgba(255, 255, 255, 0.2)';
         };
-
         searchButton.onmouseleave = () => {
             searchButton.style.background = 'rgba(255, 255, 255, 0.1)';
         };
-
         // Settings button with Material Icon
         const settingsButton = document.createElement('button');
+        settingsButton.className = 'ee-btn ee-btn-settings';
         const settingsIcon = createMaterialIcon('settings', '16px');
         settingsButton.appendChild(settingsIcon);
-
         settingsButton.title = 'Einstellungen';
         settingsButton.style.cssText = `
             display: flex;
@@ -818,28 +844,23 @@
             width: 28px;
             height: 28px;
         `;
-
         settingsButton.onmouseenter = () => {
             settingsButton.style.background = 'rgba(255, 255, 255, 0.2)';
         };
-
         settingsButton.onmouseleave = () => {
             settingsButton.style.background = 'rgba(255, 255, 255, 0.1)';
         };
-
         settingsButton.onclick = () => {
             const modal = document.getElementById('streaming-settings-modal');
             if (modal) {
                 modal.style.display = 'flex';
             }
         };
-
         controls.appendChild(searchButton);
         controls.appendChild(settingsButton);
         header.appendChild(title);
         header.appendChild(controls);
         container.appendChild(header);
-
         // Only show services if they exist
         if (hasServices) {
             // Get all providers with combined categories
@@ -851,7 +872,6 @@
                     DEFAULT_PROVIDERS.includes(service.provider_name)
                 );
             }
-
             // Apply ignore list using regular expressions
             if (IGNORE_PROVIDERS.length > 0) {
                 try {
@@ -863,9 +883,9 @@
                     console.error('Emby Elsewhere: Invalid regex in IGNORE_PROVIDERS.', e);
                 }
             }
-
             if (services.length === 0) {
                 const noServices = document.createElement('div');
+                noServices.className = 'ee-no-services';
                 noServices.textContent = DEFAULT_PROVIDERS.length > 0
                     ? 'Keine konfigurierten Dienste verfügbar'
                     : 'Nicht auf Streaming-Diensten verfügbar';
@@ -873,21 +893,19 @@
                 container.appendChild(noServices);
             } else {
                 const servicesContainer = document.createElement('div');
+                servicesContainer.className = 'ee-services-container';
                 servicesContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px;';
-
                 services.forEach(service => {
                     servicesContainer.appendChild(createServiceBadge(service, tmdbId, mediaType));
                 });
-
                 container.appendChild(servicesContainer);
             }
         }
-
         // Create manual result container for search results
         const resultContainer = document.createElement('div');
         resultContainer.id = 'streaming-result-container';
+        resultContainer.className = 'ee-result-container';
         container.appendChild(resultContainer);
-
         // Add spinning animation
         const style = document.createElement('style');
         style.textContent = `
@@ -900,7 +918,6 @@
             style.setAttribute('data-emby-elsewhere', 'true');
             document.head.appendChild(style);
         }
-
         // Add click handler for manual lookup (multiple regions)
         searchButton.onclick = () => {
             searchButton.disabled = true;
@@ -911,7 +928,6 @@
             searchButton.appendChild(document.createTextNode(' Suche...'));
             searchButton.style.opacity = '0.7';
             resultContainer.innerHTML = '';
-
             fetchStreamingData(tmdbId, mediaType, (error, data) => {
                 searchButton.disabled = false;
                 searchButton.innerHTML = '';
@@ -919,22 +935,21 @@
                 searchButton.appendChild(searchIcon);
                 searchButton.appendChild(document.createTextNode(''));
                 searchButton.style.opacity = '1';
-
                 if (error) {
-                    resultContainer.innerHTML = `<div style="color: #ff6b6b; font-size: 13px; margin-top: 8px;">Fehler: ${error}</div>`;
+                    const errorMsg = document.createElement('div');
+                    errorMsg.className = 'ee-error-message';
+                    errorMsg.style.cssText = 'color: #ff6b6b; font-size: 13px; margin-top: 8px;';
+                    errorMsg.textContent = `Fehler: ${error}`;
+                    resultContainer.appendChild(errorMsg);
                     return;
                 }
-
                 // Show results for multiple regions
                 const regionsToSearch = userRegions.length > 0 ? userRegions : [userRegion];
-
                 let hasAnyResults = false;
                 const unavailableRegions = [];
-
                 regionsToSearch.forEach((region, index) => {
                     const regionData = data.results[region];
                     const regionHasServices = hasAnyServices(regionData);
-
                     if (regionHasServices) {
                         // Get all providers with combined categories
                         let services = getAllProvidersFromRegion(regionData);
@@ -945,7 +960,6 @@
                                 userServices.includes(service.provider_name)
                             );
                         }
-
                         if (services.length > 0) {
                             hasAnyResults = true;
                             const regionResult = processRegionData(data, tmdbId, mediaType, region, true);
@@ -962,29 +976,31 @@
                         unavailableRegions.push(region);
                     }
                 });
-
                 // Show unavailable regions first if there are any
                 if (unavailableRegions.length > 0) {
                     const unavailableContainer = createUnavailableRegionsDisplay(unavailableRegions);
                     resultContainer.insertBefore(unavailableContainer, resultContainer.firstChild);
                 }
-
                 // If no results found anywhere, show a general message
                 if (!hasAnyResults && unavailableRegions.length === 0) {
                     const noServices = document.createElement('div');
+                    noServices.className = 'ee-no-services';
                     noServices.style.cssText = 'color: #6c757d; font-size: 13px; margin-top: 8px;';
                     noServices.textContent = 'Keine Streaming-Dienste in ausgewählten Regionen verfügbar';
                     resultContainer.appendChild(noServices);
                 }
             });
         };
-
+		// Resolve deep links if CORS proxy is configured
+        if (CORS_PROXY_URL && regionData && regionData.link) {
+            fetchAndApplyDeepLinks(container, regionData.link);
+        }
         return container;
     }
-
     // Create display for unavailable regions
     function createUnavailableRegionsDisplay(unavailableRegions) {
         const container = document.createElement('div');
+        container.className = 'ee-region-container ee-unavailable-region';
         container.style.cssText = `
             margin: 0 0 6px 0;
             padding: 12px;
@@ -994,22 +1010,21 @@
             backdrop-filter: blur(10px);
             position: relative;
         `;
-
         // Create header with title and close button
         const header = document.createElement('div');
+        header.className = 'ee-region-header';
         header.style.cssText = `
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 0;
         `;
-
         const title = document.createElement('div');
+        title.className = 'ee-region-title ee-unavailable-title';
         const regionNames = unavailableRegions.map(region => availableRegions[region] || region);
         const regionText = regionNames.length === 1 ? regionNames[0] :
                           regionNames.length === 2 ? regionNames.join(' und ') :
                           regionNames.slice(0, -1).join(', ') + ' und ' + regionNames[regionNames.length - 1];
-
         title.textContent = `Nicht auf Streaming-Diensten in ${regionText} verfügbar`;
         title.style.cssText = `
             font-weight: 600;
@@ -1017,9 +1032,9 @@
             color: rgb(255, 80, 80);
             flex: 1;
         `;
-
         // Create close button
         const closeButton = document.createElement('button');
+        closeButton.className = 'ee-btn ee-btn-close';
         const closeIcon = createMaterialIcon('close', '16px');
         closeButton.appendChild(closeIcon);
         closeButton.title = 'Schließen';
@@ -1037,35 +1052,28 @@
             width: 28px;
             height: 28px;
         `;
-
         closeButton.onmouseenter = () => {
             closeButton.style.background = 'rgba(255, 0, 0, 0.2)';
             closeButton.style.borderColor = 'rgba(255, 0, 0, 0.3)';
         };
-
         closeButton.onmouseleave = () => {
             closeButton.style.background = 'rgba(255, 255, 255, 0.1)';
             closeButton.style.borderColor = 'rgba(255, 255, 255, 0.2)';
         };
-
         closeButton.onclick = () => {
             container.remove();
         };
-
         header.appendChild(title);
         header.appendChild(closeButton);
         container.appendChild(header);
-
         return container;
     }
-
     // Process streaming data for a specific region
     function processRegionData(data, tmdbId, mediaType, region, showAvailable = false) {
         const regionData = data.results[region];
         if (!regionData || !hasAnyServices(regionData)) {
             return null;
         }
-
         // Get all providers with combined categories
         let services = getAllProvidersFromRegion(regionData);
         
@@ -1073,13 +1081,12 @@
         services = services.filter(service =>
             userServices.length === 0 || userServices.includes(service.provider_name)
         );
-
         // Don't show container if no services match filters
         if (services.length === 0) {
             return null;
         }
-
         const container = document.createElement('div');
+        container.className = 'ee-region-container ee-search-result-region';
         container.style.cssText = `
             margin: 10px 0 0 0;
             padding: 12px;
@@ -1089,18 +1096,18 @@
             backdrop-filter: blur(10px);
             position: relative;
         `;
-
         // Create header with title and close button
         const header = document.createElement('div');
+        header.className = 'ee-region-header';
         header.style.cssText = `
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
         `;
-
         // Create clickable title that links to JustWatch
         const title = document.createElement('a');
+        title.className = 'ee-region-title';
         const regionName = availableRegions[region] || region;
         
         // Determine title based on what's available
@@ -1129,16 +1136,15 @@
             color: #fff;
             flex: 1;
         `;
-
         // Add JustWatch link if available and enabled
         if (regionData.link) {
             title.href = regionData.link;
             title.target = '_blank';
             title.title = 'Auf JustWatch ansehen';
         }
-
         // Create close button
         const closeButton = document.createElement('button');
+        closeButton.className = 'ee-btn ee-btn-close';
         const closeIcon = createMaterialIcon('close', '16px');
         closeButton.appendChild(closeIcon);
         closeButton.title = 'Schließen';
@@ -1156,37 +1162,33 @@
             width: 28px;
             height: 28px;
         `;
-
         closeButton.onmouseenter = () => {
             closeButton.style.background = 'rgba(255, 0, 0, 0.2)';
             closeButton.style.borderColor = 'rgba(255, 0, 0, 0.3)';
         };
-
         closeButton.onmouseleave = () => {
             closeButton.style.background = 'rgba(255, 255, 255, 0.1)';
             closeButton.style.borderColor = 'rgba(255, 255, 255, 0.2)';
         };
-
         closeButton.onclick = () => {
             container.remove();
         };
-
         header.appendChild(title);
         header.appendChild(closeButton);
         container.appendChild(header);
-
         const servicesContainer = document.createElement('div');
+        servicesContainer.className = 'ee-services-container';
         servicesContainer.style.cssText = 'display: flex; flex-wrap: wrap; gap: 3px;';
-
         services.forEach(service => {
             servicesContainer.appendChild(createServiceBadge(service, tmdbId, mediaType));
         });
-
         container.appendChild(servicesContainer);
-
+		// Resolve deep links if CORS proxy is configured
+        if (CORS_PROXY_URL && regionData && regionData.link) {
+            fetchAndApplyDeepLinks(container, regionData.link);
+        }
         return container;
     }
-
     // Get TMDB ID from Emby detail page
     function getTmdbInfoFromPage(detailPage) {
         // Method 1: Search in itemLinks section (most reliable based on HTML structure)
@@ -1203,7 +1205,6 @@
                 }
             }
         }
-
         // Method 2: Search anywhere in the detail page
         const allLinks = detailPage.querySelectorAll('a[href*="themoviedb.org"]');
         for (const link of allLinks) {
@@ -1212,25 +1213,35 @@
                 return { mediaType: match[1], tmdbId: match[2] };
             }
         }
-
         return null;
     }
-
-    // Find the insertion point for Emby - after overview, before cast/people section
+    // Find the insertion point for Emby - before episodes/seasons and extras
     function findInsertionPoint(detailPage) {
-        // Priority 1: Insert before peopleSection (cast)
+        // Priority 1: Insert before seriesItemsSection (episodes/seasons) if visible
+        const seriesItemsSection = detailPage.querySelector('.seriesItemsSection:not(.hide)');
+        if (seriesItemsSection && seriesItemsSection.parentNode) {
+            return { element: seriesItemsSection, position: 'before' };
+        }
+
+        // Priority 2: Insert before specialsSection (Extras/Specials) if visible
+        const specialsSection = detailPage.querySelector('.specialsSection:not(.hide)');
+        if (specialsSection && specialsSection.parentNode) {
+            return { element: specialsSection, position: 'before' };
+        }
+
+        // Priority 3: Insert before peopleSection (cast)
         const peopleSection = detailPage.querySelector('.peopleSection');
         if (peopleSection && peopleSection.parentNode) {
             return { element: peopleSection, position: 'before' };
         }
 
-        // Priority 2: Insert after directors
+        // Priority 4: Insert after directors
         const directorsSection = detailPage.querySelector('.directors');
         if (directorsSection && directorsSection.parentNode) {
             return { element: directorsSection, position: 'after' };
         }
 
-        // Priority 3: Insert after overview
+        // Priority 5: Insert after overview
         const overviewContainer = detailPage.querySelector('.overview-container');
         if (overviewContainer && overviewContainer.parentNode) {
             return { element: overviewContainer, position: 'after' };
@@ -1244,47 +1255,38 @@
 
         return null;
     }
-
     // Process a detail page
     function processDetailPage(detailPage) {
         // Skip if page is hidden
         if (!detailPage || detailPage.classList.contains('hide')) {
             return;
         }
-
         // Skip if already processed
         if (detailPage.querySelector('.streaming-lookup-container')) {
             return;
         }
-
         // Get TMDB info from the page
         const tmdbInfo = getTmdbInfoFromPage(detailPage);
         if (!tmdbInfo) {
             console.log('🎬 Emby Elsewhere: Kein TMDB-Link auf dieser Seite gefunden');
             return;
         }
-
         // Prevent duplicate processing for same content
         const pageId = `${tmdbInfo.mediaType}-${tmdbInfo.tmdbId}`;
         if (lastProcessedId === pageId && detailPage.querySelector('.streaming-lookup-container')) {
             return;
         }
         lastProcessedId = pageId;
-
         const { mediaType, tmdbId } = tmdbInfo;
         console.log(`🎬 Emby Elsewhere: Verarbeite TMDB ${mediaType}/${tmdbId}`);
-
         // Create container
         const container = document.createElement('div');
-        container.className = 'streaming-lookup-container verticalFieldItem';
+        container.className = 'streaming-lookup-container verticalFieldItem ee-main-container';
         container.style.cssText = 'margin: -1em 1.2em;';
-
         // Find insertion point
         const insertionPoint = findInsertionPoint(detailPage);
-
         if (insertionPoint) {
             const { element, position } = insertionPoint;
-
             switch (position) {
                 case 'before':
                     element.parentNode.insertBefore(container, element);
@@ -1306,11 +1308,11 @@
             console.log('🎬 Emby Elsewhere: Kein Einfügepunkt gefunden');
             return;
         }
-
         // Auto-load streaming data for default region
         fetchStreamingData(tmdbId, mediaType, (error, data) => {
             if (error) {
                 const errorDiv = document.createElement('div');
+                errorDiv.className = 'ee-error-message';
                 errorDiv.style.cssText = `
                     font-size: 13px;
                     margin-top: 8px;
@@ -1323,7 +1325,6 @@
                 container.appendChild(errorDiv);
                 return;
             }
-
             // Show default region results automatically
             const defaultResult = processDefaultRegionData(data, tmdbId, mediaType);
             if (defaultResult) {
@@ -1331,7 +1332,6 @@
             }
         });
     }
-
     // Check for visible detail page
     function checkForDetailPage() {
         // Find visible detail page (not hidden)
@@ -1343,16 +1343,13 @@
             }
         }
     }
-
     // Setup observer for SPA navigation
     function setupObserver() {
         let debounceTimer = null;
-
         const debouncedCheck = () => {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(checkForDetailPage, 300);
         };
-
         // Watch for DOM changes and class attribute changes
         const observer = new MutationObserver((mutations) => {
             for (const mutation of mutations) {
@@ -1364,12 +1361,10 @@
                         setTimeout(() => processDetailPage(target), 300);
                     }
                 }
-
                 // Check for new nodes being added
                 if (mutation.type === 'childList' && mutation.addedNodes.length) {
                     for (const node of mutation.addedNodes) {
                         if (node.nodeType !== Node.ELEMENT_NODE) continue;
-
                         // Check if it's a detail page
                         if (node.classList && node.classList.contains('view-item-item')) {
                             setTimeout(() => processDetailPage(node), 300);
@@ -1381,7 +1376,6 @@
                                 setTimeout(() => processDetailPage(detailPage), 300);
                             }
                         }
-
                         // Check for content updates (itemLinks being added)
                         if (node.classList && (
                             node.classList.contains('itemLinks') ||
@@ -1397,35 +1391,29 @@
                 }
             }
         });
-
         observer.observe(document.body, {
             childList: true,
             subtree: true,
             attributes: true,
             attributeFilter: ['class']
         });
-
         // Watch for hash changes (Emby uses hash-based routing)
         window.addEventListener('hashchange', () => {
             lastProcessedId = null; // Reset to allow re-processing
             setTimeout(checkForDetailPage, 500);
         });
-
         // Watch for popstate (browser back/forward)
         window.addEventListener('popstate', () => {
             lastProcessedId = null;
             setTimeout(checkForDetailPage, 500);
         });
-
         // Try to hook into Emby's event system
         document.addEventListener('viewshow', () => {
             setTimeout(checkForDetailPage, 500);
         });
-
         document.addEventListener('pageshow', () => {
             setTimeout(checkForDetailPage, 500);
         });
-
         // Hook into Emby's require system if available
         if (window.require) {
             try {
@@ -1441,27 +1429,20 @@
             }
         }
     }
-
     // Initialize
     loadRegionsAndProviders();
     loadSettings();
-
     // Wait for regions and providers to load before creating modal
     setTimeout(() => {
         createSettingsModal();
     }, 2000);
-
     // Setup observer for SPA navigation
     setupObserver();
-
     // Initial scan
     setTimeout(checkForDetailPage, 1000);
-
     // Periodic fallback check (less frequent)
     setInterval(checkForDetailPage, 5000);
-
     console.log('🎬 Emby Elsewhere geladen!');
-
     // Export for embedded mode
     if (!isUserScript) {
         window.EmbyElsewhere = {
