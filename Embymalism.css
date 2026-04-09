@@ -1,4 +1,4 @@
-/* ===== Embymalism_4.9.3.0 20260220 ===== */
+/* ===== Embymalism_4.9.3.0 20260409 ===== */
 
 @import url('https://fonts.googleapis.com/css2?family=Sofia+Sans:ital,wght@0,1..1000;1,1..1000&display=swap');
 
@@ -1942,6 +1942,31 @@ span.osd-endsat {
 }
 .videoosd-tabcontainers.flex.videoosd-tabcontainers-hidden {
   height: 0 !important;
+}
+
+/* FIX: Force hide OSD tabs when closed */
+.videoosd-tabcontainers.videoosd-tabcontainers-hidden,
+.videoosd-tabcontainers-hidden .videoosd-tab,
+.videoosd-tabcontainers-hidden .videoosd-guidetab {
+display: none !important;
+visibility: hidden !important;
+opacity: 0 !important;
+height: 0 !important;
+width: 0 !important;
+margin: 0 !important;
+padding: 0 !important;
+overflow: hidden !important;
+pointer-events: none !important;
+}
+
+/* Fix for the 'sticky' Guide */
+.videoosd-tab.videoosd-tab-hidden {
+display: none !important;
+}
+
+/* Removes the forced flex layout that causes the stack-up */
+.videoosd-bottom-with-opentab .videoOsd-hideWithOpenTab {
+display: none !important;
 }
 
 /* FIX: OSD visible when info or chapter is toggled */
