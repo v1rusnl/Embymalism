@@ -5,6 +5,8 @@ A Finimalism inspired CSS theme for Emby Media Servers Web Client
 
 ## Installation
 
+Change Preferences -> Display -> Theme + Settings Theme to Dark to display the Custom CSS properly
+
 Paste the following Code into "Dashboard -> General -> Custom CSS"
 
 ```
