@@ -1,4 +1,4 @@
-/* ===== Embymalism_4.9.3.0 20260409 ===== */
+/* ===== Embymalism_4.9.5.0 20260707 ===== */
 
 @import url('https://fonts.googleapis.com/css2?family=Sofia+Sans:ital,wght@0,1..1000;1,1..1000&display=swap');
 
@@ -315,7 +315,7 @@ i.navDrawerListItemIcon.listItemIcon.md-icon {
   
 /* ===== FORMULARE & INPUTS ===== */
 form, .readOnlyContent {
-  max-width: 85ch;
+  max-width: 100ch;
 }
 
 textarea.txtCustomCss {
@@ -2343,8 +2343,8 @@ img.recordingDialog-img {
   .topDetailsContainer .verticalFieldItem.tagline,
   .topDetailsContainer .verticalFieldItem.overview-container,
   .topDetailsContainer .verticalFieldItem.directors {
-    max-width: 55% !important;
-    width: 55% !important;
+    max-width: 70% !important;
+    width: 70% !important;
   }
   
   .topDetailsContainer .verticalFieldItem.trackSelections {
@@ -3189,4 +3189,79 @@ a.ee-region-title {
 
 div.ee-region-container.ee-search-result-region {
     background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* ===== TMDB TV-Show-Status Plugin: Badge wie .mediaInfoItem ausrichten ===== */
+
+/* Inline-Style "margin:6px 0" überschreiben & wie .mediaInfoItem stylen */
+#tmdb-status-badge {
+    display: inline-flex !important;
+    align-items: center !important;
+    padding: 5px 5px !important;      /* identisch zu .mediaInfoItem */
+    margin: 0 0 10px 0 !important;    /* identisch zu .mediaInfoItem */
+    line-height: normal !important;
+    order: -1;                        /* nach ganz vorne (links) */
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
+
+/* innerer Wrapper vom Plugin */
+#tmdb-status-badge > div {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    line-height: 1 !important;
+}
+
+/* Icon auf Textgröße shrinken, damit Zeilenhöhe = andere Items */
+#tmdb-status-badge svg {
+    width: 1em !important;
+    height: 1em !important;
+    vertical-align: middle;
+}
+
+/* Text: gleiche Größe/Farbe wie Nachbar-Items */
+#tmdb-status-badge span {
+    font-size: inherit !important;
+    font-weight: inherit !important;
+    color: inherit !important;
+    line-height: 1 !important;
+}
+
+/* ===== OVERVIEW CONTAINER: breiter & mehr Zeilen sichtbar ===== */
+.detailTextContainer .overview-container {
+    max-width: none !important;
+    width: 100% !important;
+    padding-right: 3em;              /* Abstand zum rechten Rand */
+    align-items: flex-start !important; /* "Mehr"-Button nach oben, damit Text darunter Platz hat */
+}
+
+/* Der Button, der den Text enthält, darf nicht mehr in Button-Breite gequetscht werden */
+.detailTextContainer .overview-container .btnOverviewText {
+    flex: 1 1 auto !important;
+    max-width: none !important;
+    width: 100% !important;
+    white-space: normal !important;
+}
+
+/* Der eigentliche Text: mehr Zeilen zeigen, Ellipsis erlauben oder ganz weg */
+.detailTextContainer .overview-container .overview-text {
+    max-width: none !important;
+    width: 100% !important;
+    /* Anzahl sichtbarer Zeilen anpassen (z. B. 8) */
+    -webkit-line-clamp: 8 !important;
+    -webkit-box-orient: vertical !important;
+    display: -webkit-box !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.5 !important;
+    font-size: 0.95em !important;
+    max-height: 65px !important;
+    height: auto !important;
+}
+
+/* "Mehr"-Button (Read More) rechts oben positionieren, statt neben dem Text */
+.detailTextContainer .overview-container .btnReadMore {
+    align-self: flex-end !important;
+    margin-left: 10px !important;
 }
