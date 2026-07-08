@@ -1,4 +1,4 @@
-/* ===== Embymalism_4.9.5.0 20260707 ===== */
+/* ===== Embymalism_4.9.5.0 20260708 ===== */
 
 @import url('https://fonts.googleapis.com/css2?family=Sofia+Sans:ital,wght@0,1..1000;1,1..1000&display=swap');
 
@@ -853,7 +853,7 @@ div.peopleSection .coveredImage {
 }
 
 .detailTextContainer .verticalFieldItem {
-  margin-bottom: 19px!important;
+  margin-bottom: 10px!important;
 }
 
 .detailTextContainer .trackSelections .selectLabel {
@@ -887,6 +887,12 @@ form.verticalFieldItem.trackSelections .selectLabelText {
   border: 0 !important;
   background: rgba(255, 255, 255, 0.1) !important;
   border-radius: 5px !important;
+}
+
+@supports selector(:hover) and (display:revert) and (column-gap:1em) {
+    .fieldItems {
+        row-gap: 0em !important;
+    }
 }
 
 /*.mediaInfoItem:nth-last-child(2) a {
@@ -3255,8 +3261,8 @@ div.ee-region-container.ee-search-result-region {
     overflow: hidden;
     text-overflow: ellipsis;
     line-height: 1.5 !important;
-    font-size: 0.95em !important;
-    max-height: 65px !important;
+    font-size: 90.15% !important;
+    max-height: 117px !important;
     height: auto !important;
 }
 
