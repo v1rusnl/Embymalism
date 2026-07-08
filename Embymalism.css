@@ -1,4 +1,4 @@
-/* ===== Embymalism_4.9.5.0 20260708 ===== */
+/* ===== Embymalism_4.9.5.0 20260709 ===== */
 
 @import url('https://fonts.googleapis.com/css2?family=Sofia+Sans:ital,wght@0,1..1000;1,1..1000&display=swap');
 
@@ -891,7 +891,7 @@ form.verticalFieldItem.trackSelections .selectLabelText {
 
 @supports selector(:hover) and (display:revert) and (column-gap:1em) {
     .fieldItems {
-        row-gap: 0em !important;
+        row-gap: 0.3em !important;
     }
 }
 
