@@ -1,4 +1,4 @@
-/* ===== Embymalism_4.9.5.0 20260709 ===== */
+/* ===== Embymalism_4.9.5.0 20260710 ===== */
 
 @import url('https://fonts.googleapis.com/css2?family=Sofia+Sans:ital,wght@0,1..1000;1,1..1000&display=swap');
 
@@ -2789,6 +2789,7 @@ img.recordingDialog-img {
     -webkit-align-items: center;
     align-items: center;
     margin-top: 25px !important;
+    margin-bottom: 20px !important;
   }
 }
 
@@ -3262,7 +3263,7 @@ div.ee-region-container.ee-search-result-region {
     text-overflow: ellipsis;
     line-height: 1.5 !important;
     font-size: 90.15% !important;
-    max-height: 117px !important;
+    max-height: 90px !important;
     height: auto !important;
 }
 
