@@ -1,4 +1,4 @@
-/* ===== Embymalism_4.10.0.40 20260909 ===== */
+/* ===== Embymalism_4.10.0.40 20260910 ===== */
 
 @import url('https://fonts.googleapis.com/css2?family=Sofia+Sans:ital,wght@0,1..1000;1,1..1000&display=swap');
 
@@ -1270,9 +1270,9 @@ div.verticalSection.chaptersSection .emby-scroller .cardImage {
   background-color: #000;
 }
 
-.coveredImage {
+/*.coveredImage {
   object-fit: fill;
-}
+}*/
 
 .emby-scroller .dialogContentInner .cardImage {
   object-fit: contain !important;
