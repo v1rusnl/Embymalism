@@ -1,4 +1,4 @@
-/* ===== Embymalism_4.10.0.40 20260910 ===== */
+/* ===== Embymalism_4.10.0.40 20260912 ===== */
 
 @import url('https://fonts.googleapis.com/css2?family=Sofia+Sans:ital,wght@0,1..1000;1,1..1000&display=swap');
 
@@ -534,25 +534,42 @@ i.cardIndicator.cardPlayedIndicator.playedIndicator.md-icon {
   background-color: var(--theme-primary-color) !important;
 }
 
-.cardOverlayContainer .cardOverlayButton-br .cardOverlayButton[is="emby-playstatebutton"], 
-.cardOverlayContainer .cardOverlayButton-br .cardOverlayButton[is="paper-icon-button-light"], 
-.cardOverlayContainer .cardOverlayButton-br .cardOverlayButton[is="emby-ratingbutton"] {
-  color: transparent !important;
+/* Grundzustand: transparenter, runder Hintergrund */
+.cardOverlayContainer .cardOverlayButton-br.buttonItems button.cardOverlayButton[is="emby-ratingbutton"],
+.cardOverlayContainer .cardOverlayButton-br.buttonItems button.cardOverlayButton[is="emby-playstatebutton"] {
   background: transparent !important;
   border-color: transparent !important;
-  box-shadow: none!important;
+  box-shadow: none !important;
+  border-radius: 50% !important;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
-.cardOverlayContainer.itemAction:hover .cardOverlayButton-br .cardOverlayButton[is="emby-playstatebutton"], 
-.cardOverlayContainer.itemAction:hover .cardOverlayButton-br .cardOverlayButton[is="paper-icon-button-light"], 
-.cardOverlayContainer.itemAction:hover .cardOverlayButton-br .cardOverlayButton[is="emby-ratingbutton"] {
-  color: #fff !important;
-  background: none !important;
-  border-color: none !important;
-}
-
-.cardOverlayContainer.itemAction:hover .cardOverlayButton-br .cardOverlayButton[is="emby-ratingbutton"][data-isfavorite="false"] {
+/* Aktiv: Icon in Theme-Farbe */
+.cardOverlayContainer .cardOverlayButton-br.buttonItems button.cardOverlayButton[is="emby-ratingbutton"][data-isfavorite="true"],
+.cardOverlayContainer .cardOverlayButton-br.buttonItems button.cardOverlayButton[is="emby-playstatebutton"][data-played="true"] {
   color: var(--theme-primary-color) !important;
+}
+
+/* Inaktiv: weißes Icon */
+.cardOverlayContainer .cardOverlayButton-br.buttonItems button.cardOverlayButton[is="emby-ratingbutton"][data-isfavorite="false"],
+.cardOverlayContainer .cardOverlayButton-br.buttonItems button.cardOverlayButton[is="emby-playstatebutton"][data-played="false"] {
+  color: #fff !important;
+}
+
+@media (pointer: fine) {
+  /* Aktiv + Hover: weißer Hintergrund, Icon in Theme-Farbe */
+  .cardOverlayContainer .cardOverlayButton-br.buttonItems button.cardOverlayButton[is="emby-ratingbutton"][data-isfavorite="true"]:hover,
+  .cardOverlayContainer .cardOverlayButton-br.buttonItems button.cardOverlayButton[is="emby-playstatebutton"][data-played="true"]:hover {
+    background: #fff !important;
+    color: var(--theme-primary-color) !important;
+  }
+
+  /* Inaktiv + Hover: Hintergrund in Theme-Farbe, weißes Icon */
+  .cardOverlayContainer .cardOverlayButton-br.buttonItems button.cardOverlayButton[is="emby-ratingbutton"][data-isfavorite="false"]:hover,
+  .cardOverlayContainer .cardOverlayButton-br.buttonItems button.cardOverlayButton[is="emby-playstatebutton"][data-played="false"]:hover {
+    background: var(--theme-primary-color) !important;
+    color: #fff !important;
+  }
 }
 
 .cardOverlayButton-br .cardOverlayButton-hover.playstatebutton-icon {
@@ -1270,7 +1287,7 @@ div.verticalSection.chaptersSection .emby-scroller .cardImage {
   background-color: #000;
 }
 
-/*.coveredImage {
+/* .coveredImage {
   object-fit: fill;
 }*/
 
