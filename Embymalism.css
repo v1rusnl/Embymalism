@@ -1,4 +1,4 @@
-/* ===== Embymalism_4.10.0.40 20260912 ===== */
+/* ===== Embymalism_4.10.0.40 20260915 ===== */
 
 @import url('https://fonts.googleapis.com/css2?family=Sofia+Sans:ital,wght@0,1..1000;1,1..1000&display=swap');
 
@@ -152,7 +152,7 @@ i.md-icon.button-icon.button-icon-left.secondaryText.headerHelpButtonIcon,
 .headerHelpButtonText,
 .button-help {
   background: transparent !important;
-  color: white;
+  color: white !important;
   transition: background 0.3s ease !important;
   border-radius: 50% !important;
 }
@@ -370,6 +370,10 @@ span.checkboxLabel-lockedfield.checkboxLabel-lockedfield-standalone.checkboxLabe
 
 .emby-toggle-focusring:focus:checked+.toggleLabel::after {
   box-shadow: 0 0 0 0.7em rgb(220 154 12 / 16%)!important;
+}
+
+.emby-toggle:checked~.toggleSwitch {
+    background: #14aadf;
 }
 
 .chkLockedField:checked + span.checkboxLabel-lockedfield {
@@ -3293,4 +3297,21 @@ div.ee-region-container.ee-search-result-region {
 /* ===== Homescreen Companion ===== */
 .plugin-footer {
     background: none !important;
+}
+
+/* ===== Overlay Plugin ===== */
+/* Inaktiver Reiter */
+#enoTabBar .eno-tab[data-active="false"] {
+  color: #14aadf !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-bottom-color: transparent !important;
+  opacity: 1 !important;
+}
+
+/* Aktiver Reiter */
+#enoTabBar .eno-tab[data-active="true"] {
+  color: #fff !important;
+  background: #14aadf !important;
+  border-bottom-color: #14aadf !important;
+  opacity: 1 !important;
 }
