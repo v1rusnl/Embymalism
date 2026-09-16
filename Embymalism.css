@@ -1,4 +1,4 @@
-/* ===== Embymalism_4.10.0.40 20260915 ===== */
+/* ===== Embymalism_4.10.0.40 20260916 ===== */
 
 @import url('https://fonts.googleapis.com/css2?family=Sofia+Sans:ital,wght@0,1..1000;1,1..1000&display=swap');
 
@@ -3314,4 +3314,32 @@ div.ee-region-container.ee-search-result-region {
   background: #14aadf !important;
   border-bottom-color: #14aadf !important;
   opacity: 1 !important;
+}
+
+/* ===== EmbyIcons ===== */
+/* Hintergrund der aufklappbaren Überschriften */
+.embyIconsForm .collapsible-header {
+  background-color: #14aadf !important;
+}
+
+/* Willkommensbox */
+.embyIconsForm > div:first-child {
+  border-left-color: #14aadf !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Überschrift der Willkommensbox */
+.embyIconsForm > div:first-child > h2 {
+  color: #14aadf !important;
+}
+
+/* „How to Use“-Box */
+#iconManagerHowTo {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Grüne Hinweisbox auf der Readme-Seite */
+#readmePage div[style*="rgba(82, 181, 75, 0.1)"] {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  border-left: 4px solid #14aadf !important;
 }
