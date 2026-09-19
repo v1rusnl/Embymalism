@@ -1,4 +1,4 @@
-/* ===== Embymalism_4.10.0.40 20260916 ===== */
+/* ===== Embymalism_4.10.0.40 20260919 ===== */
 
 @import url('https://fonts.googleapis.com/css2?family=Sofia+Sans:ital,wght@0,1..1000;1,1..1000&display=swap');
 
@@ -3342,4 +3342,15 @@ div.ee-region-container.ee-search-result-region {
 #readmePage div[style*="rgba(82, 181, 75, 0.1)"] {
   background-color: rgba(255, 255, 255, 0.1) !important;
   border-left: 4px solid #14aadf !important;
+}
+
+/* ===== Hover Plus: Popup-Hintergrund ===== */
+.hover-synopsis-popup:not([data-tmdb-data]),
+.hover-synopsis-popup[data-tmdb-data] > div[style*="background: linear-gradient"] {
+    background: linear-gradient(
+        77deg,
+        rgba(8, 1, 18, 1) 0%,
+        rgba(8, 1, 18, 0.9) 48%,
+        rgba(8, 1, 18, 0.8) 100%
+    ) !important;
 }
