@@ -3175,6 +3175,11 @@ input[is="emby-checkbox"]:checked {
   accent-color: rgb(20, 170, 223) !important;
 }
 
+/* Abstand zwischen vertikalen Abschnitten entfernen */
+.verticalSections {
+    row-gap: 1em !important;
+}
+
 /* Emby Custom JS sections (Reviews, Elsewhere) */
 /* Emby Ratings */
 div.mdblist-rating-row.verticalFieldItem.detail-lineItem {
