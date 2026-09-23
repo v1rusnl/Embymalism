@@ -1,4 +1,4 @@
-/* ===== Embymalism_4.10.0.40 20260919 ===== */
+/* ===== Embymalism_4.10.0.40 20260923 ===== */
 
 @import url('https://fonts.googleapis.com/css2?family=Sofia+Sans:ital,wght@0,1..1000;1,1..1000&display=swap');
 
@@ -3294,11 +3294,6 @@ div.ee-region-container.ee-search-result-region {
     margin-left: 10px !important;
 }
 
-/* ===== Homescreen Companion ===== */
-.plugin-footer {
-    background: none !important;
-}
-
 /* ===== Overlay Plugin ===== */
 /* Inaktiver Reiter */
 #enoTabBar .eno-tab[data-active="false"] {
@@ -3345,6 +3340,7 @@ div.ee-region-container.ee-search-result-region {
 }
 
 /* ===== Hover Plus: Popup-Hintergrund ===== */
+/* Popup Color */
 .hover-synopsis-popup:not([data-tmdb-data]),
 .hover-synopsis-popup[data-tmdb-data] > div[style*="background: linear-gradient"] {
     background: linear-gradient(
@@ -3353,4 +3349,158 @@ div.ee-region-container.ee-search-result-region {
         rgba(8, 1, 18, 0.9) 48%,
         rgba(8, 1, 18, 0.8) 100%
     ) !important;
+}
+
+/* Runde Emby- und TMDB-Schauspielerfotos */
+.hover-synopsis-popup img[style*="height: 119.2px"]:first-child:nth-last-child(2),
+.hover-synopsis-popup img[style*="height: 119.1px"] {
+    width: 79.4px !important;
+    height: 79.4px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+    object-position: center 20% !important;
+}
+
+/* ===== HomeScreenCompanion ===== */
+
+/* Footer */
+.plugin-footer {
+    -webkit-backdrop-filter: saturate(1) blur(20px) !important;
+    backdrop-filter: saturate(1) blur(20px) !important;
+    background-color: transparent !important;
+    box-shadow: 0px 5px 25px 5px rgba(0, 0, 0, 0.34) !important;
+    border-top: 0.08em solid rgba(255, 255, 255, .08);
+    left: 0 !important;
+}
+
+/* Schaltflächen und Statuspunkte */
+#HomeScreenCompanionConfigPage .btn-save,
+#HomeScreenCompanionConfigPage .day-toggle.active,
+#HomeScreenCompanionConfigPage .tag-indicator.schedule.schedule-active::after {
+    background-color: #14aadf !important;
+}
+
+/* Rahmen */
+#HomeScreenCompanionConfigPage .tag-row:not(.inactive),
+#HomeScreenCompanionConfigPage .man-section-row {
+    border-left-color: #14aadf !important;
+}
+
+#HomeScreenCompanionConfigPage .day-toggle.active,
+#HomeScreenCompanionConfigPage .filter-dropdown-btn.active,
+#HomeScreenCompanionConfigPage .step-num {
+    border-color: #14aadf !important;
+}
+
+/* Texte, Links und Icons */
+#HomeScreenCompanionConfigPage :is(
+    .page-tab-btn.active,
+    .hsc-sub-tab-btn.active,
+    .tc-sub-tab-btn.active,
+    .hsc-section-title,
+    .filter-dropdown-btn.active,
+    .help-nav-link:hover,
+    .help-link,
+    .help-section,
+    .help-feat-icon,
+    .ex-easy
+) {
+    color: #14aadf !important;
+}
+
+/* Unterstreichungen aktiver Tabs */
+#HomeScreenCompanionConfigPage :is(
+    .page-tab-btn.active,
+    .hsc-sub-tab-btn.active,
+    .tc-sub-tab-btn.active
+) {
+    border-bottom-color: #14aadf !important;
+}
+
+/* Grüner Startpunkt des Hilfe-Verlaufs */
+#HomeScreenCompanionConfigPage #helpModalOverlay .modal-header-bar {
+    background: linear-gradient(
+        135deg, #14aadf 0%, #3a8c34 100%
+    ) !important;
+}
+
+/* Inline-Textfarben, auch in ausgelagerten Plugin-Dialogen */
+:is(
+    #HomeScreenCompanionConfigPage,
+    body > div > div[style*="--plugin-popup-bg"]
+) :is(
+    [style^="color:#52b54b;" i],
+    [style^="color: #52b54b;" i],
+    [style*=";color:#52b54b;" i],
+    [style*="; color: #52b54b;" i],
+    [style^="color: rgb(82, 181, 75);" i],
+    [style*="; color: rgb(82, 181, 75);" i]
+) {
+    color: #14aadf !important;
+}
+
+/* Inline-Hintergründe */
+:is(
+    #HomeScreenCompanionConfigPage,
+    body > div > div[style*="--plugin-popup-bg"]
+) :is(
+    [style*="background:#52b54b;" i],
+    [style*="background: #52b54b;" i],
+    [style*="background: rgb(82, 181, 75);" i],
+    [style*="background-color: rgb(82, 181, 75);" i]
+) {
+    background-color: #14aadf !important;
+}
+
+/* Dynamisch gesetzte Rahmen, z. B. ausgewählte Optionen */
+:is(
+    #HomeScreenCompanionConfigPage,
+    body > div > div[style*="--plugin-popup-bg"]
+) :is(
+    [style*="border-color:#52b54b;" i],
+    [style*="border-color: #52b54b;" i],
+    [style*="border-color: rgb(82, 181, 75);" i]
+) {
+    border-color: #14aadf !important;
+}
+
+/* Dynamisch gesetzte Unterstreichungen der Source-Tabs */
+#HomeScreenCompanionConfigPage .tag-tab:is(
+    [style*="border-bottom: 2px solid #52b54b;" i],
+    [style*="border-bottom: 2px solid rgb(82, 181, 75);" i],
+    [style*="border-bottom-color: #52b54b;" i],
+    [style*="border-bottom-color: rgb(82, 181, 75);" i]
+) {
+    border-bottom-color: #14aadf !important;
+}
+
+/* Animation beim Hinzufügen einer Zeile */
+#HomeScreenCompanionConfigPage .tag-row.just-added {
+    animation-name: hsc-custom-add-highlight !important;
+}
+
+@keyframes hsc-custom-add-highlight {
+    0% {
+        border-top-color: #14aadf;
+        border-right-color: #14aadf;
+        border-bottom-color: #14aadf;
+        box-shadow: 0 0 15px rgba(82, 181, 75, 0.5);
+    }
+    100% {
+        border-top-color: var(--line-color);
+        border-right-color: var(--line-color);
+        border-bottom-color: var(--line-color);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+    }
+}
+
+/* 2. rgba(82,181,75,0.15) → rgba(255,255,255,0.1) */
+#HomeScreenCompanionConfigPage .btn-help-trigger:not(:hover) {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* 3. rgba(82,181,75,0.55) → #14aadf */
+#HomeScreenCompanionConfigPage .btn-help-trigger,
+#HomeScreenCompanionConfigPage .btn-help-trigger:hover {
+    border-color: #14aadf !important;
 }
