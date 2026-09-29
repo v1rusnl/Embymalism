@@ -2,9 +2,9 @@
  * Emby Ratings Integration
  * Adapted Jellyfin JS snippet -> THX to https://github.com/Druidblack/jellyfin_ratings
  * Shows IMDb, Rotten Tomatoes, Metacritic, Trakt, Letterboxd, AniList, RogerEbert, Kinopoisk, Allociné, Oscars + Emmy + Golden Globes + BAFTA + Razzies (Wins/Nominees), Palme d'Or + Berlinale + Venice Wins
- * PERFORMANCE OPTIMIZED: Combined SPARQL query for all awards
+ * JSON first; missing awards and ratings load concurrently.
  *
- * Fill out Confguration (line 50-90)
+ * Configuration is at the beginning of this file.
  * - Paste your API keys -  min. MDBList key is mandatory to get most ratings (except Allociné); if no key is used, leave the value field empty
  * - Enable the Rating providers you'd like to see
  * - For Rotten Tomatoes Badge "Verified Hot" to work automatically and Ratings for old titles with MDBList null API response + Allociné Ratings, you need a reliant CORS proxy, e.g. https://github.com/obeone/simple-cors-proxy and you need to set its base URL
@@ -24,34 +24,11 @@
  * .filter(k => k.startsWith('emby_ratings_') && k.includes('1399'))
  * .forEach(k => { console.log('Lösche:', k); localStorage.removeItem(k); });
  */
-
-if (typeof GM_xmlhttpRequest === 'undefined') {
-  window.GM_xmlhttpRequest = function({ method = 'GET', url, headers = {}, data, onload, onerror }) {
-    fetch(url, {
-      method,
-      headers,
-      body: data,
-      cache: 'no-store'
-    })
-    .then(response =>
-      response.text().then(text =>
-        onload({ status: response.status, responseText: text })
-      )
-    )
-    .catch(err => {
-      if (typeof onerror === 'function') onerror(err);
-    });
-  };
-}
-	
-(function() {
-    'use strict';
-
-    // ══════════════════════════════════════════════════════════════════
-    // CONFIGURATION
-    // ══════════════════════════════════════════════════════════════════
-    
+ 
+(function(){
     const CONFIG = {
+        enableAwards: true,
+        enableCustomRatings: true,
 		// ══════════════════════════════════════════════════════════════════
 		// API KEYS
 		// ══════════════════════════════════════════════════════════════════
@@ -85,6 +62,237 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
         CORS_PROXY_URL: '' // e.g. 'https://cors.yourdomain.com/proxy/'
     };
 
+/* Shared runtime, embedded into each distributable script. No extra script tag needed. */
+(function (w) {
+ 'use strict';
+ if (w.EmbyRatingsRuntime?.version === '20260929.6') return;
+ const pending = new Map(), memory = new Map(), queues = new Map(), next = new Map(), cooldown = new Map();
+ let configValue = null, configUntil = 0, jsonValue = null, jsonUntil = 0;
+ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+ async function timeout(promise, ms) { let timer; try { return await Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Request timeout')),ms);})]); } finally { clearTimeout(timer); } }
+ let resolvedApi = null, lastScope = null;
+ const api = () => w.ApiClient || resolvedApi;
+ async function resolveApi() {
+  if(api())return api();
+  if(typeof w.require==='function')try{resolvedApi=await timeout(new Promise(resolve=>w.require(['connectionManager'],cm=>resolve((cm?.default||cm)?.currentApiClient?.()||null),()=>resolve(null))),2500);}catch{}
+  return api();
+ }
+ const scope = () => (api()?.serverAddress?.() || location.origin) + ':' + (api()?.getCurrentUserId?.() || 'anonymous');
+ const hash = s => { let h = 2166136261,j=5381; for (const c of s) {h = Math.imul(h ^ c.charCodeAt(0), 16777619);j=Math.imul(j,33)^c.charCodeAt(0);} return (h >>> 0).toString(16)+'_'+(j>>>0).toString(16)+'_'+s.length; };
+ const storageKey = key => 'emby_ratings_v2_' + hash(scope()) + '_' + hash(key);
+ function read(key) { try { return memory.get(storageKey(key)) || JSON.parse(localStorage.getItem(storageKey(key)) || 'null'); } catch { return null; } }
+ function write(key, value, ttl) { const record = {value, until: Date.now() + ttl}; memory.set(storageKey(key), record);if(memory.size>1024)memory.delete(memory.keys().next().value); try { localStorage.setItem(storageKey(key), JSON.stringify(record)); } catch {} }
+ async function single(key, action) {
+  key = scope() + ':' + key;
+  if (pending.has(key)) return pending.get(key);
+  const task = Promise.resolve().then(action); pending.set(key, task);
+  try { return await task; } finally { pending.delete(key); }
+ }
+ async function limited(key, action) {
+  const old = queues.get(key) || Promise.resolve();
+  const task = old.catch(() => {}).then(async () => {
+   if ((cooldown.get(key) || 0) > Date.now()) throw new Error('Provider cooldown');
+   await sleep(Math.max(0, (next.get(key) || 0) - Date.now()));
+   try { return await action(); } finally { next.set(key, Date.now() + (key.includes('wikidata') ? 2000 : 500)); }
+  });
+  queues.set(key, task); try { return await task; } finally { if (queues.get(key) === task) queues.delete(key); }
+ }
+ async function text(url, options = {}, ttl = 3600000) {
+  const key = 'http:' + url + ':' + (options.body || '') + ':' + JSON.stringify(options.headers || {});
+  const cached = read(key); if (cached?.until > Date.now()) return cached.value;
+  return single(key, () => limited(new URL(url, location.href).host, async () => {
+   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 25000);
+   try {
+    const response = await fetch(url, {...options, signal: controller.signal});
+    if (!response.ok) {
+     if ([402, 429, 503].includes(response.status)) {
+      const retry = response.headers.get('Retry-After');
+      const delay = /^\d+$/.test(retry || '') ? Number(retry) * 1000 : Date.parse(retry) - Date.now();
+      cooldown.set(new URL(url, location.href).host, Date.now() + (response.status === 402 ? 86400000 : (delay > 0 ? delay : 60000)));
+     }
+     throw new Error('Provider HTTP ' + response.status);
+    }
+    const value = await response.text();
+    if (ttl > 0 && value) write(key, value, ttl);
+    return value;
+   } catch (e) { if (cached?.value) return cached.value; throw e; }
+   finally { clearTimeout(timer); }
+  }));
+ }
+ async function config() {
+  await resolveApi();
+  if(lastScope!==scope()){lastScope=scope();configValue=null;configUntil=0;jsonValue=null;jsonUntil=0;}
+  if (Date.now() < configUntil) return configValue;
+  if (!api()?.getUrl || !api()?.getJSON) return null;
+  return single('config', async () => {
+   try {
+    configValue = await timeout(api().getJSON(api().getUrl('NativeSpotlight/Config')),4000);
+    configUntil = Date.now() + 60000;
+   } catch { configValue = null; configUntil = Date.now() + 3000; }
+   return configValue;
+  });
+ }
+ function field(c, key, fallback) { return c?.[key] ?? c?.[key[0].toLowerCase() + key.slice(1)] ?? fallback; }
+ async function endpoint(provider, args) {
+  const c = await config(); if (!c) return undefined;
+  const key = 'plugin-v26:' + provider + ':' + JSON.stringify(Object.fromEntries(Object.entries(args).sort(([a],[b])=>a.localeCompare(b))));
+  const flag = {MdbList:'EnableCustomRatings', Awards:'EnableAwards', Allocine:'EnableAllocine', AniList:'EnableAniList', Kinopoisk:'EnableKinopoisk', RottenTomatoes:'EnableRottenTomatoes'}[provider];
+  if (!field(c, flag, true) || (provider !== 'Awards' && !field(c, 'EnableCustomRatings', true))) return null;
+  const recent=read(key);if(recent?.until>Date.now())return recent.value;
+  return single(key, async () => {
+   try { const result=await timeout(api().getJSON(api().getUrl('NativeSpotlight/' + provider, args)),90000);write(key,result,60000);return result; }
+   catch { return undefined; }
+  });
+ }
+ function jsonUrl() {
+  // Preserve reverse-proxy prefixes and ignore the hash-based Emby route.
+  const scripts = [...document.scripts];
+  const own = scripts.find(s => /\/(?:emby-ratings|native-spotlight-custom)\.js(?:\?|$)/.test(s.src));
+  return new URL('ratings-data.json', own?.src || new URL('web/', (api()?.serverAddress?.() || location.origin).replace(/\/$/, '') + '/')).href;
+ }
+ async function serverRatings() {
+  if (Date.now() < jsonUntil) return jsonValue;
+  return single('optional-json', async () => {
+   const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 2500);
+   try {
+    const response = await fetch(jsonUrl(), {cache:'no-cache', signal:controller.signal});
+    if (!response.ok) throw new Error('Optional JSON absent');
+    const data = await response.json();
+    if (!data || Array.isArray(data) || typeof data !== 'object') throw new Error('Invalid optional JSON');
+    jsonValue = data; jsonUntil = Date.now() + 300000;
+   } catch { jsonUntil = Date.now() + 60000; }
+   finally { clearTimeout(timer); }
+   return jsonValue;
+  });
+ }
+ async function awards(imdb) {
+  if (!/^tt\d+$/.test(imdb || '')) return null;
+  const server = await endpoint('Awards', {ImdbId:imdb}); if (server !== undefined) return server;
+  const query = async q => JSON.parse(await text('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(q), {headers:{Accept:'application/sparql-results+json'}})).results.bindings;
+  try {
+   const item = (await query(`SELECT ?item WHERE { ?item wdt:P345 "${imdb}" . } LIMIT 1`))[0]?.item?.value?.split('/').pop();
+   if (!/^Q\d+$/.test(item || '')) return null;
+   const rows = await query(`SELECT DISTINCT ?award ?awardLabel ?kind WHERE { { wd:${item} wdt:P166 ?award . BIND("wins" AS ?kind) } UNION { wd:${item} wdt:P1411 ?award . BIND("nominations" AS ?kind) } SERVICE wikibase:label { bd:serviceParam wikibase:language "en". } }`);
+   const result = {cannes:false,berlinale:false,venice:{gold:false,silver:false}};
+   for (const name of ['oscars','emmys','globes','bafta','razzies']) result[name] = {wins:0,nominations:0};
+   for (const row of rows) {
+    const label = (row.awardLabel?.value || '').toLowerCase(), kind = row.kind?.value;
+    if (!['wins','nominations'].includes(kind)) continue;
+    const name = /academy award|oscar/.test(label) ? 'oscars' : /emmy/.test(label) ? 'emmys' : /golden globe/.test(label) ? 'globes' : /bafta/.test(label) ? 'bafta' : /razzie|golden raspberry/.test(label) ? 'razzies' : null;
+    if (name) result[name][kind]++;
+    if (kind === 'wins') { const id = row.award?.value?.split('/').pop(); result.cannes ||= id==='Q179808'; result.berlinale ||= id==='Q154590'; result.venice.gold ||= id==='Q189038'; result.venice.silver ||= id==='Q830814'; }
+   }
+   return result;
+  } catch { return null; }
+ }
+ w.EmbyRatingsRuntime = {version:'20260929.6', config, field, endpoint, text, serverRatings, awards, single, read, write, setApi:value=>{resolvedApi=value;}};
+})(window);
+
+if (typeof GM_xmlhttpRequest === 'undefined') {
+  window.GM_xmlhttpRequest = function({ method = 'GET', url, headers = {}, data, onload, onerror }) {
+    fetch(url, {
+      method,
+      headers,
+      body: data,
+      cache: 'no-store'
+    })
+    .then(response =>
+      response.text().then(text =>
+        onload({ status: response.status, responseText: text })
+      )
+    )
+    .catch(err => {
+      if (typeof onerror === 'function') onerror(err);
+    });
+  };
+}
+	
+(function() {
+    'use strict';
+    const Shared=window.EmbyRatingsRuntime;
+    let pluginAvailable=false;
+    const GM_xmlhttpRequest = options => {
+        (async()=>{
+            let data;
+            const url=new URL(options.url);
+            if(url.host==='api.mdblist.com'){
+                const m=url.pathname.match(/\/tmdb\/(movie|show)\/(\d+)/);
+                if(m)data=await Shared.endpoint('MdbList',{Type:m[1],TmdbId:m[2]});
+                if(data===undefined&&!MDBLIST_API_KEY)throw new Error('MDBList not configured');
+            }else if(url.host==='kinopoiskapiunofficial.tech'){
+                data=await Shared.endpoint('Kinopoisk',{Type:options.ratingType||'movie',Title:url.searchParams.get('keyword'),Year:Number(url.searchParams.get('yearFrom'))});
+            }
+            const responseText=data!==undefined?JSON.stringify(data||{}):await Shared.text(options.url,{method:options.method||'GET',headers:options.headers,body:options.data});
+            options.onload?.({status:200,responseText});
+        })().catch(error=>{if(options.onerror)options.onerror(error);else options.onload?.({status:503,responseText:'{}'});});
+    };
+
+    async function ratingsFetch(url, timeout = 20000) {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), timeout);
+        try { return await fetch(url, {signal: controller.signal}); }
+        finally { clearTimeout(timer); }
+    }
+
+    function validRating(value) { return typeof value !== 'object' && value != null && String(value).trim() !== '' && String(value) !== '--'; }
+    function ratingGroup(key) {
+        if (key.startsWith('tomatoes')) return 'tomatoes';
+        if (key.startsWith('audience') || key === 'rotten_ver') return 'audience';
+        if (key === 'metacriticms') return 'metacritic';
+        return key;
+    }
+    function hasRating(container, key) {
+        return [...container.querySelectorAll('img[data-source]')].some(img => ratingGroup(img.dataset.source) === ratingGroup(key));
+    }
+    function supplementRatings(type, tmdbId, container, entry = {}) {
+        const imdb = entry.mdblist?.imdbid || container.dataset.imdbId || findImdbIdFromPage(container);
+        if (imdb) container.dataset.imdbId = imdb;
+        if (imdb && (!hasRating(container, 'allocine_critics') || !hasRating(container, 'allocine_audience'))) fetchAllocineRatings(imdb, type, container);
+        if (imdb && !hasRating(container, 'anilist')) fetchAniListRating(imdb, container);
+        if (imdb && (!hasRating(container, 'tomatoes') || !hasRating(container, 'audience'))) fetchRottenTomatoesDirectly(imdb, type, container);
+        const title = entry.mdblist?.original_title || entry.mdblist?.title || container.dataset.originalTitle;
+        const year = parseInt(entry.mdblist?.year || container.dataset.year, 10);
+        if (title && year && !hasRating(container, 'kinopoisk')) fetchKinopoiskRating(title, year, type, container);
+        const mdbKeys = ['imdb', 'tmdb', 'tomatoes', 'audience', 'metacritic', 'metacriticus', 'trakt', 'letterboxd', 'rogerebert', 'myanimelist'];
+        if (mdbKeys.some(key => isRatingProviderEnabled(key) && !hasRating(container, key))) fetchMDBListInternal(type, tmdbId, container, true);
+    }
+
+    function parseAllocineRatings(html) {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const result = {};
+        for (const title of doc.querySelectorAll('.rating-title')) {
+            const label = title.textContent.trim().toLowerCase();
+            const key = label === 'presse' ? 'pressScore' : label === 'spectateurs' ? 'audienceScore' : null;
+            if (!key) continue;
+            const section = title.closest('.rating-item');
+            const value = parseFloat(section?.querySelector('.stareval-note')?.textContent.replace(',', '.'));
+            if (value > 0 && value <= 5) result[key] = value.toFixed(1);
+        }
+        if (!result.audienceScore) {
+            const visit = data => {
+                if (!data || typeof data !== 'object') return;
+                if (Array.isArray(data)) { data.forEach(visit); return; }
+                const types = [].concat(data['@type'] || []);
+                if (types.some(type => ['Movie', 'TVSeries', 'TVSeason'].includes(type))) {
+                    const value = parseFloat(String(data.aggregateRating?.ratingValue ?? '').replace(',', '.'));
+                    if (value > 0 && value <= 5) result.audienceScore = value.toFixed(1);
+                }
+                if (data['@graph']) visit(data['@graph']);
+            };
+            for (const script of doc.querySelectorAll('script[type="application/ld+json"]')) {
+                try { visit(JSON.parse(script.textContent)); } catch {}
+            }
+        }
+        return result;
+    }
+
+
+    // ══════════════════════════════════════════════════════════════════
+    // CONFIGURATION
+    // ══════════════════════════════════════════════════════════════════
+    
+
+
     // ══════════════════════════════════════════════════════════════════
     // END CONFIGURATION
     // ══════════════════════════════════════════════════════════════════
@@ -95,8 +303,8 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
     const CACHE_TTL_HOURS = CONFIG.CACHE_TTL_HOURS;
     const CORS_PROXY_URL = CONFIG.CORS_PROXY_URL;
 
-    const CACHE_TTL_MS = CACHE_TTL_HOURS * 60 * 60 * 1000;
-    const CACHE_PREFIX = 'emby_ratings_';
+    let CACHE_TTL_MS = CACHE_TTL_HOURS * 60 * 60 * 1000;
+    const CACHE_PREFIX = 'emby_ratings_v2_details_';
 
 	const RatingsCache = {
 		get(key) {
@@ -166,6 +374,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	};
 
     function isRatingProviderEnabled(source) {
+        if(!CONFIG.enableCustomRatings)return false;
         const key = source.toLowerCase().replace(/\s+/g, '_');
         if (key === 'imdb') return CONFIG.enableIMDb;
         if (key === 'tmdb') return CONFIG.enableTMDb;
@@ -192,11 +401,11 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
     // ══════════════════════════════════════════════════════════════════
     // MANUAL OVERRIDES (Fallback if RT-Scrape fails)
     // ══════════════════════════════════════════════════════════════════ 	  
-	const CERTIFIED_FRESH_OVERRIDES = [
+	let CERTIFIED_FRESH_OVERRIDES = [
 	    // '550',      // Fight Club
 	];
 	  
-	const VERIFIED_HOT_OVERRIDES = [
+	let VERIFIED_HOT_OVERRIDES = [
         // Movies with a score <90, but RT verified hot nonetheless
         '812583', // Wake Up Dead Man A Knives Out Mystery
         '1272837', // 28 Years Later: The Bone Temple
@@ -229,7 +438,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	];
 
 	const LOGO = {
-		imdb: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/IMDb_noframe.png',
+		imdb: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/IMDb_legacy.png',
 		tmdb: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/TMDB.png',
 		tomatoes: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Rotten_Tomatoes.png',
 		tomatoes_rotten: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/Rotten_Tomatoes_rotten.png',
@@ -269,15 +478,31 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		cannes: 'https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/cannes.png'
 	};
 
+	  // ══════════════════════════════════════════════════════════════════
+	  // SERVER RATINGS – Load pre-computed data from Docker container
+	  // ══════════════════════════════════════════════════════════════════
+
+	  let SERVER_RATINGS = null;
+
+      async function refreshSettings(){const c=await Shared.config();
+        pluginAvailable=!!c;if(!c)return;
+        const ids=v=>String(v||'').split(/[,;\s]+/).filter(x=>/^\d+$/.test(x));
+        CERTIFIED_FRESH_OVERRIDES=ids(Shared.field(c,'CertifiedFreshOverrides',CERTIFIED_FRESH_OVERRIDES.join(',')));
+        VERIFIED_HOT_OVERRIDES=ids(Shared.field(c,'VerifiedHotOverrides',VERIFIED_HOT_OVERRIDES.join(',')));
+        CACHE_TTL_MS=Math.max(1,Number(Shared.field(c,'CacheTtlHours',168)))*3600000;
+        for(const key of Object.keys(CONFIG)) if(key.startsWith('enable')&&key!=='enableAwards') CONFIG[key]=Shared.field(c,key[0].toUpperCase()+key.slice(1),CONFIG[key]);
+      }
+      const SERVER_RATINGS_READY=Shared.serverRatings().then(data=>{SERVER_RATINGS=data;});
+
 	let currentImdbId = null;
 	let currentTmdbData = null;
 
 	setInterval(scanLinks, 1000);
 	scanLinks();
 
-	function findImdbIdFromPage() {
-		if (currentImdbId) return currentImdbId;
-		const imdbLink = document.querySelector(
+	function findImdbIdFromPage(container) {
+        const view=container?.closest('.view-item-item,.page') || document.querySelector('.view-item-item:not(.hide),.page:not(.hide)') || document;
+		const imdbLink = view.querySelector(
 		  'a[href*="imdb.com/title/tt"], a.button-link[href*="imdb.com/title/tt"], a.emby-button[href*="imdb.com/title/tt"]'
 		);
 		if (imdbLink) {
@@ -333,7 +558,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		if (!anchors) return;
 		const { nameContainer, mediaInfoBar } = anchors;
 
-		if (mediaInfoBar) setBuiltInStarsHidden(mediaInfoBar, true);
+		if (mediaInfoBar) setBuiltInStarsHidden(mediaInfoBar, false);
 
 		const ratingRow = document.createElement('div');
 		ratingRow.className = 'mdblist-rating-row verticalFieldItem detail-lineItem';
@@ -341,6 +566,9 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 
 		const container = document.createElement('div');
 		container.className = 'mdblist-rating-container';
+        container.dataset.tmdbId=tmdbId;container.dataset.type=type;
+        const localImdb=pageView.querySelector('a[href*="imdb.com/title/tt"]')?.href.match(/tt\d+/)?.[0];
+        if(localImdb)container.dataset.imdbId=localImdb;
 		container.style.cssText = 'display:inline-flex; align-items:center; flex-wrap:wrap;';
 		ratingRow.appendChild(container);
 
@@ -358,7 +586,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		  return;
 		}
 
-		fetchMDBList(type, tmdbId, container);
+        fetchMDBList(type, tmdbId, container);
 	}
 
 	function hideSecondaryRatingContainers(pageView) {
@@ -414,12 +642,14 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		insertRatingRow(pageView, type, tmdbId, episodeInfo);
 		pageView.querySelectorAll('.mediaInfo.detail-mediaInfoPrimary').forEach(bar => {
 		  if (isInEpisodeListView(bar)) return;
-		  setBuiltInStarsHidden(bar, true);
+		  setBuiltInStarsHidden(bar, !!pageView.querySelector('.mdblist-rating-container img[data-source]'));
 		});
 		hideSecondaryRatingContainers(pageView);
 	}
 
 	function appendRatingBadge(container, logoKey, altText, title, value) {
+        if(!container.isConnected)return;
+        if (!validRating(value) || !isRatingProviderEnabled(logoKey) || hasRating(container, logoKey)) return;
 		const logoUrl = LOGO[logoKey];
 		if (!logoUrl) return;
 		const img = document.createElement('img');
@@ -431,6 +661,8 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		span.textContent = value;
 		span.style.cssText = 'margin-right:8px; font-size:1em; vertical-align:middle;';
 		container.appendChild(span);
+        const view=container.closest('.view-item-item,.page');
+        view?.querySelectorAll('.mediaInfo.detail-mediaInfoPrimary').forEach(bar=>setBuiltInStarsHidden(bar,true));
 	}
 
 	function renderCachedRatings(cachedData, container) {
@@ -439,6 +671,45 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		  appendRatingBadge(container, badge.logoKey, badge.alt, badge.title, badge.value);
 		});
 	}
+	
+	  // Server Awards rendern – mit Logo-Key Mapping
+	  function renderServerAwards(awards, container) {
+		if (!Array.isArray(awards) || awards.length === 0) return;
+		const awardsRow = getOrCreateAwardsRow(container);
+		if (!awardsRow) return;
+
+		// Mapping: Server-logoKey → LOGO-Key in emby-ratings.js
+		const AWARD_LOGO_REMAP = {
+		  'oscar_gold':        'academy',
+		  'oscar_nom':         'oscars_nom',
+		  'emmy_gold':         'emmy',
+		  'emmy_nom':          'emmy_nom',
+		  'golden_globe_gold': 'globes',
+		  'golden_globe_nom':  'globes_nom',
+		  'bafta_gold':        'bafta',
+		  'bafta_nom':         'bafta_nom',
+		  'razzie_gold':       'razzies',
+		  'razzie':            'razzies',
+		  'cannes':            'cannes',
+		  'berlinale':         'berlinale',
+		  'venezia_gold':      'venezia_gold',
+		  'venezia_silver':    'venezia_silver'
+		};
+
+		awards.forEach(award => {
+		  // Remapping anwenden, Fallback auf Original-Key
+		  const mappedKey = AWARD_LOGO_REMAP[award.logoKey] || award.logoKey;
+		  const logoUrl = LOGO[mappedKey];
+		  if (!logoUrl) return;
+
+		  const img = document.createElement('img');
+		  img.src = logoUrl;
+		  img.alt = award.alt || '';
+		  img.title = award.title || '';
+		  img.style.cssText = 'height:1.5em; margin-right:8px; vertical-align:middle;';
+		  awardsRow.appendChild(img);
+		});
+	  }
 
 	// ══════════════════════════════════════════════════════════════════
 	// Rotten Tomatoes: Get RT Slug from Wikidata
@@ -449,7 +720,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			if (!imdbId) { resolve(null); return; }
 			const cacheKey = `rt_slug_${imdbId}`;
 			const cached = RatingsCache.get(cacheKey);
-			if (cached !== null) { resolve(cached.slug); return; }
+			if (cached?.slug) { resolve(cached.slug); return; }
 
 			const sparql = `SELECT ?rtId WHERE { ?item wdt:P345 "${imdbId}" . ?item wdt:P1258 ?rtId . } LIMIT 1`;
 			GM_xmlhttpRequest({
@@ -473,7 +744,9 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	// Rotten Tomatoes: Fetch Certified Status
 	// ══════════════════════════════════════════════════════════════════
 
-	function fetchRTCertifiedStatus(imdbId, type) {
+	async function fetchRTCertifiedStatus(imdbId, type) {
+        const server=await Shared.endpoint('RottenTomatoes',{ImdbId:imdbId,Type:type});
+        if(server!==undefined)return {criticsCertified:server?.criticsCertified??null,audienceCertified:server?.audienceCertified??null};
 		return new Promise((resolve) => {
 			if (!CONFIG.enableRottenTomatoes || !imdbId || !CORS_PROXY_URL || CORS_PROXY_URL.trim() === '') {
 				resolve({ criticsCertified: null, audienceCertified: null });
@@ -524,7 +797,15 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	// Rotten Tomatoes: Direct Scraping
 	// ══════════════════════════════════════════════════════════════════
 
-	function fetchRottenTomatoesDirectly(imdbId, type, container) {
+	async function fetchRottenTomatoesDirectly(imdbId, type, container) {
+        await refreshSettings();
+        if(!CONFIG.enableRottenTomatoes)return;
+        const server=await Shared.endpoint('RottenTomatoes',{ImdbId:imdbId,Type:type});
+        if(server!==undefined){
+            if(server?.criticsScore!=null)appendRatingBadge(container,server.criticsScore<60?'tomatoes_rotten':server.criticsCertified?'tomatoes_certified':'tomatoes','Rotten Tomatoes','Rotten Tomatoes',server.criticsScore);
+            if(server?.audienceScore!=null)appendRatingBadge(container,server.audienceScore<60?'audience_rotten':server.audienceCertified?'rotten_ver':'audience','RT Audience','RT Audience',server.audienceScore);
+            return;
+        }
 		if (!CONFIG.enableRottenTomatoes || !imdbId || !CORS_PROXY_URL || CORS_PROXY_URL.trim() === '') return;
 
 		const cacheKey = `rt_direct_${type}_${imdbId}`;
@@ -648,6 +929,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	// ══════════════════════════════════════════════════════════════════
 
 	function getOrCreateAwardsRow(container) {
+        if(!CONFIG.enableAwards||!container.isConnected)return null;
 		const ratingRow = container.closest('.mdblist-rating-row');
 		if (!ratingRow) return null;
 		let awardsRow = ratingRow.parentNode.querySelector('.awards-combined-row');
@@ -712,130 +994,54 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	}
 
 	// ══════════════════════════════════════════════════════════════════
-	// COMBINED AWARDS QUERY — single SPARQL request for ALL awards
-	// Replaces 8 separate functions with 1 request
+	// AWARDS — shared Wikidata mapping, then one query for all awards
+	// Mapping is reused by Allocine; no dependency on the Spotlight awards stub.
 	// ══════════════════════════════════════════════════════════════════
 
-	function fetchAllAwardsCombined(imdbId) {
-		return new Promise((resolve) => {
-			if (!imdbId) { resolve(null); return; }
+ async function directDetailAwards(imdb) {
+  if (!/^tt\d+$/.test(imdb || '')) return null;
+  const query = async q => JSON.parse(await Shared.text('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(q), {headers:{Accept:'application/sparql-results+json'}})).results.bindings;
+  try {
+   const item = (await getWikidataMapping(imdb))?.item;
+   if (!/^Q\d+$/.test(item || '')) return null;
+   const rows = await query(`SELECT DISTINCT ?award ?awardLabel ?kind WHERE { { wd:${item} wdt:P166 ?award . BIND("wins" AS ?kind) } UNION { wd:${item} wdt:P1411 ?award . BIND("nominations" AS ?kind) } SERVICE wikibase:label { bd:serviceParam wikibase:language "en". } }`);
+   const result = {cannes:false,berlinale:false,venice:{gold:false,silver:false}};
+   for (const name of ['oscars','emmys','globes','bafta','razzies']) result[name] = {wins:0,nominations:0};
+   for (const row of rows) {
+    const label = (row.awardLabel?.value || '').toLowerCase(), kind = row.kind?.value;
+    if (!['wins','nominations'].includes(kind)) continue;
+    const name = /academy award|oscar/.test(label) ? 'oscars' : /emmy/.test(label) ? 'emmys' : /golden globe/.test(label) ? 'globes' : /bafta/.test(label) ? 'bafta' : /razzie|golden raspberry/.test(label) ? 'razzies' : null;
+    if (name) result[name][kind]++;
+    if (kind === 'wins') { const id = row.award?.value?.split('/').pop(); result.cannes ||= id==='Q179808'; result.berlinale ||= id==='Q154590'; result.venice.gold ||= id==='Q189038'; result.venice.silver ||= id==='Q830814'; }
+   }
+   return result;
+  } catch { return null; }
+ }
 
-			const cacheKey = `all_awards_combined_${imdbId}`;
-			const cached = RatingsCache.get(cacheKey);
-			if (cached !== null) { resolve(cached); return; }
+    async function fetchAllAwardsCombined(imdbId) {
+        if(!CONFIG.enableAwards)return null;
+        const key='detail_awards_'+imdbId;
+        const cached=RatingsCache.get(key);if(cached)return cached;
+        return Shared.single(key,async()=>{
+            const result=await directDetailAwards(imdbId);
+            if(result)RatingsCache.set(key,result);
+            return result;
+        });
+    }
+    const awardsStarted=new WeakMap();
 
-			const sparql = `
-				SELECT 
-					?awardLabel ?nomLabel
-					?isCannes ?isBerlinale ?isVeniceGold ?isVeniceSilver
-				WHERE {
-					?item wdt:P345 "${imdbId}" .
-					
-					OPTIONAL {
-						?item wdt:P166 ?award .
-						?award rdfs:label ?awardLabel .
-						FILTER(LANG(?awardLabel) = "en")
-					}
-					OPTIONAL {
-						?item wdt:P1411 ?nom .
-						?nom rdfs:label ?nomLabel .
-						FILTER(LANG(?nomLabel) = "en")
-					}
-					
-					BIND(EXISTS { ?item wdt:P166 wd:Q179808 } AS ?isCannes)
-					BIND(EXISTS { ?item wdt:P166 wd:Q154590 } AS ?isBerlinale)
-					BIND(EXISTS { ?item wdt:P166 wd:Q189038 } AS ?isVeniceGold)
-					BIND(EXISTS { ?item wdt:P166 wd:Q830814 } AS ?isVeniceSilver)
-				}`;
-
-			GM_xmlhttpRequest({
-				method: 'GET',
-				url: 'https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparql),
-				headers: {
-					'Accept': 'application/sparql-results+json',
-					'User-Agent': 'EmbyRatingsScript/1.0'
-				},
-				onload(res) {
-					if (res.status !== 200) {
-						RatingsCache.set(cacheKey, null);
-						resolve(null);
-						return;
-					}
-					let json;
-					try { json = JSON.parse(res.responseText); }
-					catch { RatingsCache.set(cacheKey, null); resolve(null); return; }
-
-					const bindings = json.results?.bindings || [];
-					const winLabels = new Set();
-					const nomLabels = new Set();
-					let isCannes = false, isBerlinale = false, isVeniceGold = false, isVeniceSilver = false;
-
-					bindings.forEach(row => {
-						if (row.awardLabel?.value) winLabels.add(row.awardLabel.value);
-						if (row.nomLabel?.value) nomLabels.add(row.nomLabel.value);
-						if (row.isCannes?.value === 'true') isCannes = true;
-						if (row.isBerlinale?.value === 'true') isBerlinale = true;
-						if (row.isVeniceGold?.value === 'true') isVeniceGold = true;
-						if (row.isVeniceSilver?.value === 'true') isVeniceSilver = true;
-					});
-
-					function countByKeyword(labels, keywords) {
-						let count = 0;
-						labels.forEach(label => {
-							const lower = label.toLowerCase();
-							if (keywords.some(kw => lower.includes(kw))) count++;
-						});
-						return count;
-					}
-
-					const result = {
-						oscars: {
-							wins: countByKeyword(winLabels, ['academy award', 'oscar']),
-							nominations: countByKeyword(nomLabels, ['academy award', 'oscar'])
-						},
-						emmys: {
-							wins: countByKeyword(winLabels, ['emmy']),
-							nominations: countByKeyword(nomLabels, ['emmy'])
-						},
-						globes: {
-							wins: countByKeyword(winLabels, ['golden globe']),
-							nominations: countByKeyword(nomLabels, ['golden globe'])
-						},
-						bafta: {
-							wins: countByKeyword(winLabels, ['bafta']),
-							nominations: countByKeyword(nomLabels, ['bafta'])
-						},
-						razzies: {
-							wins: countByKeyword(winLabels, ['razzie', 'golden raspberry']),
-							nominations: countByKeyword(nomLabels, ['razzie', 'golden raspberry'])
-						},
-						cannes: isCannes,
-						berlinale: isBerlinale,
-						venice: { gold: isVeniceGold, silver: isVeniceSilver }
-					};
-
-					console.log(`[Emby Ratings] Combined awards for ${imdbId}:`, result);
-					RatingsCache.set(cacheKey, result);
-					resolve(result);
-				},
-				onerror() {
-					RatingsCache.set(cacheKey, null);
-					resolve(null);
-				}
-			});
-		});
-	}
-
-	/**
-	 * Fetch all awards with single query and render them into the awards row.
-	 * Replaces: fetchAcademyAwards, fetchGoldenGlobeAwards, fetchEmmyAwards,
-	 *           fetchBAFTAAwards, fetchRazzieAwards, fetchBerlinaleAward,
-	 *           fetchCannesAward, fetchVeneziaAward
-	 */
 	function fetchAndRenderAllAwards(imdbId, container) {
-		if (!imdbId) return;
+        if(!CONFIG.enableAwards||!container.isConnected)return;
+        const entry=SERVER_RATINGS?.[`${container.dataset.type}_${container.dataset.tmdbId}`];
+        const imported=entry?.awards||RatingsCache.get(`mdblist_${container.dataset.type}_${container.dataset.tmdbId}`)?.awards;
+        if(!imdbId&&!imported)return;
+        if(awardsStarted.get(container)===(imdbId||'import'))return;
+        awardsStarted.set(container,imdbId||'import');
+        const task=imported&&typeof imported==='object'&&!Array.isArray(imported)?Promise.resolve(imported):fetchAllAwardsCombined(imdbId);
+        task.then(awards => {
+            if(!container.isConnected)return;
+            if(awards){awards={oscars:{},emmys:{},globes:{},bafta:{},razzies:{},venice:{},...awards};}
 
-		fetchAllAwardsCombined(imdbId).then(awards => {
 			if (!awards) return;
 
 			const awardsRow = getOrCreateAwardsRow(container);
@@ -907,167 +1113,194 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		});
 	}
 
-	// ══════════════════════════════════════════════════════════════════
-	// MDBList Main Fetch
-	// ══════════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════
+    // MDBList Main Fetch
+    // ══════════════════════════════════════════════════════════════════
+    async function fetchMDBList(type, tmdbId, container) {
+        await Promise.all([refreshSettings(),Shared.serverRatings().then(data=>{SERVER_RATINGS=data;})]);
+        if (container.isConnected === false) return;
+        container.dataset.type=type;container.dataset.tmdbId=tmdbId;
+        const entry=SERVER_RATINGS?.[`${type}_${tmdbId}`];
+        const imdb=entry?.mdblist?.imdbid||container.dataset.imdbId||findImdbIdFromPage(container);
+        if(imdb)container.dataset.imdbId=imdb;
+        fetchAndRenderAllAwards(imdb,container);
+        fetchMDBListInternal(type, tmdbId, container);
+        // Emby can make its API client available after this script's first run.
+        if(!pluginAvailable&&!MDBLIST_API_KEY&&(Number(container.dataset.pluginRetries)||0)<3){
+            container.dataset.pluginRetries=String((Number(container.dataset.pluginRetries)||0)+1);
+            setTimeout(()=>{if(container.isConnected)fetchMDBList(type,tmdbId,container);},4000);
+        }
+    }
+    function fetchMDBListInternal(type, tmdbId, container, liveOnly = false) {
+        container.dataset.tmdbId = tmdbId;
+        container.dataset.type = type;
+        const cacheKey = `mdblist_${type}_${tmdbId}`;
 
-	function fetchMDBList(type, tmdbId, container) {
-		container.dataset.tmdbId = tmdbId;
-		container.dataset.type = type;
+        // ┌─────────────────────────────────────────────────────────────┐
+        // │ 1) localStorage Cache                                       │
+        // └─────────────────────────────────────────────────────────────┘
+        const serverFirst = SERVER_RATINGS?.[`${type}_${tmdbId}`];
+        const cached = liveOnly || serverFirst?.badges?.some(b => validRating(b.value)) ? null : RatingsCache.get(cacheKey);
+        if (cached?.badges?.some(b => validRating(b.value))) {
+            // ★ Prüfe ob Server-Daten neuer sind als der Cache
+            const serverKey = `${type}_${tmdbId}`;
+            const serverEntry = liveOnly ? null : SERVER_RATINGS?.[serverKey];
+            if (serverEntry?.ts && cached.serverTs && serverEntry.ts > cached.serverTs) {
+                console.log(`[Ratings] Cache veraltet für ${serverKey}, nutze Server-Daten`);
+                localStorage.removeItem(CACHE_PREFIX + cacheKey);
+                // Nicht return → fällt durch zu Schritt 2 (Server-Daten)
+            } else {
+                container.dataset.originalTitle = cached.originalTitle || '';
+                container.dataset.year = cached.year || '';
+                renderCachedRatings(cached, container);
 
-		const cacheKey = `mdblist_${type}_${tmdbId}`;
-		const cached = RatingsCache.get(cacheKey);
-		if (cached) {
-		  container.dataset.originalTitle = cached.originalTitle || '';
-		  container.dataset.year = cached.year || '';
-		  renderCachedRatings(cached, container);
+                supplementRatings(type, tmdbId, container, {mdblist: {imdbid: cached.imdbId}});
+                return;
+            }
+        }
 
-		  const imdbId = findImdbIdFromPage();
-		  
-		  const hasRTCached = cached.badges && cached.badges.some(b => 
-			b.logoKey.includes('tomatoes') || b.logoKey.includes('audience') || b.logoKey.includes('rotten')
-		  );
-		  if (!hasRTCached && imdbId) fetchRottenTomatoesDirectly(imdbId, type, container);
+        // ┌─────────────────────────────────────────────────────────────┐
+        // │ 2) SERVER RATINGS – Pre-computed by Docker container         │
+        // └─────────────────────────────────────────────────────────────┘
+        const serverKey = `${type}_${tmdbId}`;
+        const serverEntry = liveOnly ? null : SERVER_RATINGS?.[serverKey];
+        if (serverEntry?.badges?.some(b => validRating(b.value))) {
+            console.log(`[Ratings] Server-Daten für ${serverKey}`);
+            const mdb = serverEntry.mdblist || {};
+            container.dataset.originalTitle = mdb.original_title || mdb.title || '';
+            container.dataset.year = mdb.year || '';
 
-		  if (imdbId) {
-			fetchAniListRating(imdbId, container);
-			// OPTIMIZED: Single combined query instead of 8 separate ones
-			fetchAndRenderAllAwards(imdbId, container);
-		  }
+            serverEntry.badges.forEach(badge => {
+                if (isRatingProviderEnabled(badge.logoKey)) {
+                    appendRatingBadge(container, badge.logoKey, badge.alt, badge.title, badge.value);
+                }
+            });
 
-		  const title = container.dataset.originalTitle;
-		  const year  = parseInt(container.dataset.year, 10);
-		  if (title && year) fetchKinopoiskRating(title, year, type, container);
+            // ★ Cache mit Server-Timestamp
+            RatingsCache.set(cacheKey, {
+                originalTitle: container.dataset.originalTitle,
+                year: container.dataset.year,
+                badges: serverEntry.badges,
+                awards: serverEntry.awards || null,
+                serverComplete: true,
+                serverTs: serverEntry.ts
+            });
+            supplementRatings(type, tmdbId, container, serverEntry);
+            return;
+        }
 
-		  const imdbIdForAllocine = findImdbIdFromPage();
-		  if (imdbIdForAllocine) fetchAllocineRatings(imdbIdForAllocine, type, container);
-		  return;
-		}
+        // ┌─────────────────────────────────────────────────────────────┐
+        // │ 3) LIVE-API FALLBACK (Original-Verhalten)                   │
+        // └─────────────────────────────────────────────────────────────┘
+        const allocineImdb = container.dataset.imdbId || findImdbIdFromPage(container);
+        if (allocineImdb) { fetchAndRenderAllAwards(allocineImdb,container); fetchAllocineRatings(allocineImdb, type, container); }
+        if (allocineImdb) { fetchAndRenderAllAwards(allocineImdb,container); fetchAniListRating(allocineImdb,container); fetchRottenTomatoesDirectly(allocineImdb,type,container); }
 
-		GM_xmlhttpRequest({
-		  method: 'GET',
-		  url: `https://api.mdblist.com/tmdb/${type}/${tmdbId}?apikey=${MDBLIST_API_KEY}`,
-		  onload(res) {
-			if (res.status !== 200) return;
-			let data;
-			try { data = JSON.parse(res.responseText); } catch { return; }
-
-			container.dataset.originalTitle = data.original_title || data.title || '';
-			container.dataset.year = data.year || '';
-
-			const isCertifiedFreshOverride = CERTIFIED_FRESH_OVERRIDES.includes(String(tmdbId));
-			const isVerifiedHotOverride = VERIFIED_HOT_OVERRIDES.includes(String(tmdbId));
-
-			let metacriticScore = null, metacriticVotes = null;
-			let tomatoesScore = null, tomatoesVotes = null;
-			let audienceScore = null, audienceVotes = null;
-			let hasRTFromMDBList = false;
-			const badgesToCache = [];
-			let criticsBadgeImg = null, criticsBadgeCacheIndex = -1;
-			let audienceBadgeImg = null, audienceBadgeCacheIndex = -1;
-
-			if (Array.isArray(data.ratings)) {
-			  // First pass: collect scores
-			  data.ratings.forEach(r => {
-				if (r.value == null) return;
-				const key = r.source.toLowerCase();
-				if (key === 'metacritic') { metacriticScore = r.value; metacriticVotes = r.votes; }
-				else if (key === 'tomatoes') { tomatoesScore = r.value; tomatoesVotes = r.votes; hasRTFromMDBList = true; }
-				else if (key.includes('popcorn') || key.includes('audience')) { audienceScore = r.value; audienceVotes = r.votes; hasRTFromMDBList = true; }
-			  });
-
-			  // Second pass: render badges
-			  data.ratings.forEach(r => {
-				if (r.value == null) return;
-				let key = r.source.toLowerCase().replace(/\s+/g, '_');
-				if (!isRatingProviderEnabled(key)) return;
-
-				let isCriticsBadge = false, isAudienceBadge = false;
-
-				if (key === 'tomatoes') {
-				  isCriticsBadge = true;
-				  key = r.value < 60 ? 'tomatoes_rotten' :
-				        (isCertifiedFreshOverride || (tomatoesScore >= 75 && tomatoesVotes >= 80)) ? 'tomatoes_certified' : 'tomatoes';
-				} else if (key.includes('popcorn') || key.includes('audience')) {
-				  isAudienceBadge = true;
-				  key = r.value < 60 ? 'audience_rotten' :
-				        (isVerifiedHotOverride || (audienceScore >= 90 && audienceVotes >= 500)) ? 'rotten_ver' : 'audience';
-				} else if (key === 'metacritic') {
-				  key = (metacriticScore > 81 && metacriticVotes > 14) ? 'metacriticms' : 'metacritic';
-				} else if (key.includes('metacritic') && key.includes('user')) key = 'metacriticus';
-				else if (key.includes('trakt')) key = 'trakt';
-				else if (key.includes('letterboxd')) key = 'letterboxd';
-				else if (key.includes('roger') || key.includes('ebert')) key = 'rogerebert';
-				else if (key.includes('myanimelist')) key = 'myanimelist';
-
-				const logoUrl = LOGO[key];
-				if (!logoUrl) return;
-				const titleText = `${r.source}: ${r.value}${r.votes ? ` (${r.votes} votes)` : ''}`;
-
-				badgesToCache.push({ logoKey: key, alt: r.source, title: titleText, value: String(r.value) });
-				appendRatingBadge(container, key, r.source, titleText, r.value);
-
-				const allImgs = container.querySelectorAll('img[data-source]');
-				const lastImg = allImgs[allImgs.length - 1];
-				if (isCriticsBadge && r.value >= 60) { criticsBadgeImg = lastImg; criticsBadgeCacheIndex = badgesToCache.length - 1; }
-				if (isAudienceBadge && r.value >= 60) { audienceBadgeImg = lastImg; audienceBadgeCacheIndex = badgesToCache.length - 1; }
-			  });
-			}
-
-			const imdbId = findImdbIdFromPage();
-
-			// RT FALLBACK
-			if (!hasRTFromMDBList && imdbId && CONFIG.enableRottenTomatoes) {
-				fetchRottenTomatoesDirectly(imdbId, type, container);
-			}
-			// RT UPGRADE
-			else if (hasRTFromMDBList && imdbId && CONFIG.enableRottenTomatoes) {
-				const needsRTScrape = (criticsBadgeImg && tomatoesScore >= 60) || (audienceBadgeImg && audienceScore >= 60);
-				if (needsRTScrape) {
-				  fetchRTCertifiedStatus(imdbId, type).then(rtStatus => {
-					if (criticsBadgeImg && tomatoesScore >= 60 && rtStatus.criticsCertified !== null) {
-					  if (rtStatus.criticsCertified === true && criticsBadgeImg.dataset.source !== 'tomatoes_certified') {
-						criticsBadgeImg.src = LOGO.tomatoes_certified; criticsBadgeImg.dataset.source = 'tomatoes_certified';
-						if (criticsBadgeCacheIndex >= 0) badgesToCache[criticsBadgeCacheIndex].logoKey = 'tomatoes_certified';
-					  } else if (rtStatus.criticsCertified === false && criticsBadgeImg.dataset.source === 'tomatoes_certified') {
-						criticsBadgeImg.src = LOGO.tomatoes; criticsBadgeImg.dataset.source = 'tomatoes';
-						if (criticsBadgeCacheIndex >= 0) badgesToCache[criticsBadgeCacheIndex].logoKey = 'tomatoes';
-					  }
-					}
-					if (audienceBadgeImg && audienceScore >= 60 && rtStatus.audienceCertified !== null) {
-					  if (rtStatus.audienceCertified === true && audienceBadgeImg.dataset.source !== 'rotten_ver') {
-						audienceBadgeImg.src = LOGO.rotten_ver; audienceBadgeImg.dataset.source = 'rotten_ver';
-						if (audienceBadgeCacheIndex >= 0) badgesToCache[audienceBadgeCacheIndex].logoKey = 'rotten_ver';
-					  } else if (rtStatus.audienceCertified === false && audienceBadgeImg.dataset.source === 'rotten_ver') {
-						audienceBadgeImg.src = LOGO.audience; audienceBadgeImg.dataset.source = 'audience';
-						if (audienceBadgeCacheIndex >= 0) badgesToCache[audienceBadgeCacheIndex].logoKey = 'audience';
-					  }
-					}
-					RatingsCache.set(cacheKey, { originalTitle: data.original_title || data.title || '', year: data.year || '', badges: badgesToCache });
-				  });
-				} else {
-				  RatingsCache.set(cacheKey, { originalTitle: data.original_title || data.title || '', year: data.year || '', badges: badgesToCache });
-				}
-			} else {
-			  RatingsCache.set(cacheKey, { originalTitle: data.original_title || data.title || '', year: data.year || '', badges: badgesToCache });
-			}
-
-			// Supplementary ratings
-			if (imdbId) {
-			  fetchAniListRating(imdbId, container);
-			  // OPTIMIZED: Single combined query instead of 8 separate ones
-			  fetchAndRenderAllAwards(imdbId, container);
-			}
-
-			const title = container.dataset.originalTitle;
-			const year = parseInt(container.dataset.year, 10);
-			if (title && year) fetchKinopoiskRating(title, year, type, container);
-
-			const imdbIdForAllocine = findImdbIdFromPage();
-			if (imdbIdForAllocine) fetchAllocineRatings(imdbIdForAllocine, type, container);
-		  }
-		});
-	}
+        GM_xmlhttpRequest({
+            method: 'GET',
+            url: `https://api.mdblist.com/tmdb/${type}/${tmdbId}?apikey=${MDBLIST_API_KEY}`,
+            onload(res) {
+                if (res.status !== 200) return;
+                let data;
+                try { data = JSON.parse(res.responseText); } catch { return; }
+                if (data.imdbid) container.dataset.imdbId = data.imdbid;
+                container.dataset.originalTitle = data.original_title || data.title || '';
+                container.dataset.year = data.year || '';
+                const isCertifiedFreshOverride = CERTIFIED_FRESH_OVERRIDES.includes(String(tmdbId));
+                const isVerifiedHotOverride = VERIFIED_HOT_OVERRIDES.includes(String(tmdbId));
+                let metacriticScore = null, metacriticVotes = null;
+                let tomatoesScore = null, tomatoesVotes = null;
+                let audienceScore = null, audienceVotes = null;
+                let hasRTFromMDBList = false;
+                const badgesToCache = [];
+                let criticsBadgeImg = null, criticsBadgeCacheIndex = -1;
+                let audienceBadgeImg = null, audienceBadgeCacheIndex = -1;
+                if (Array.isArray(data.ratings)) {
+                    data.ratings.forEach(r => {
+                        if (r.value == null) return;
+                        const key = r.source.toLowerCase();
+                        if (key === 'metacritic') { metacriticScore = r.value; metacriticVotes = r.votes; }
+                        else if (key === 'tomatoes') { tomatoesScore = r.value; tomatoesVotes = r.votes; hasRTFromMDBList = true; }
+                        else if (key.includes('popcorn') || key.includes('audience')) { audienceScore = r.value; audienceVotes = r.votes; hasRTFromMDBList = true; }
+                    });
+                    data.ratings.forEach(r => {
+                        if (r.value == null) return;
+                        let key = r.source.toLowerCase().replace(/\s+/g, '_');
+                        if (!isRatingProviderEnabled(key)) return;
+                        let isCriticsBadge = false, isAudienceBadge = false;
+                        if (key === 'tomatoes') {
+                            isCriticsBadge = true;
+                            key = r.value < 60 ? 'tomatoes_rotten' :
+                                (isCertifiedFreshOverride || (tomatoesScore >= 75 && tomatoesVotes >= 80)) ? 'tomatoes_certified' : 'tomatoes';
+                        } else if (key.includes('popcorn') || key.includes('audience')) {
+                            isAudienceBadge = true;
+                            key = r.value < 60 ? 'audience_rotten' :
+                                (isVerifiedHotOverride || (audienceScore >= 90 && audienceVotes >= 500)) ? 'rotten_ver' : 'audience';
+                        } else if (key === 'metacritic') {
+                            key = (metacriticScore > 81 && metacriticVotes > 14) ? 'metacriticms' : 'metacritic';
+                        } else if (key.includes('metacritic') && key.includes('user')) key = 'metacriticus';
+                        else if (key.includes('trakt')) key = 'trakt';
+                        else if (key.includes('letterboxd')) key = 'letterboxd';
+                        else if (key.includes('roger') || key.includes('ebert')) key = 'rogerebert';
+                        else if (key.includes('myanimelist')) key = 'myanimelist';
+                        if (hasRating(container, key)) return;
+                        const logoUrl = LOGO[key];
+                        if (!logoUrl) return;
+                        const titleText = `${r.source}: ${r.value}${r.votes ? ` (${r.votes} votes)` : ''}`;
+                        badgesToCache.push({ logoKey: key, alt: r.source, title: titleText, value: String(r.value) });
+                        appendRatingBadge(container, key, r.source, titleText, r.value);
+                        const allImgs = container.querySelectorAll('img[data-source]');
+                        const lastImg = allImgs[allImgs.length - 1];
+                        if (isCriticsBadge && r.value >= 60) { criticsBadgeImg = lastImg; criticsBadgeCacheIndex = badgesToCache.length - 1; }
+                        if (isAudienceBadge && r.value >= 60) { audienceBadgeImg = lastImg; audienceBadgeCacheIndex = badgesToCache.length - 1; }
+                    });
+                }
+                const imdbId = container.dataset.imdbId || findImdbIdFromPage(container);
+                if (!hasRTFromMDBList && imdbId && CONFIG.enableRottenTomatoes) {
+                    fetchRottenTomatoesDirectly(imdbId, type, container);
+                }
+                else if (hasRTFromMDBList && imdbId && CONFIG.enableRottenTomatoes) {
+                    const needsRTScrape = (criticsBadgeImg && tomatoesScore >= 60) || (audienceBadgeImg && audienceScore >= 60);
+                    if (needsRTScrape) {
+                        fetchRTCertifiedStatus(imdbId, type).then(rtStatus => {
+                            if (criticsBadgeImg && tomatoesScore >= 60 && rtStatus.criticsCertified !== null) {
+                                if (rtStatus.criticsCertified === true && criticsBadgeImg.dataset.source !== 'tomatoes_certified') {
+                                    criticsBadgeImg.src = LOGO.tomatoes_certified; criticsBadgeImg.dataset.source = 'tomatoes_certified';
+                                    if (criticsBadgeCacheIndex >= 0) badgesToCache[criticsBadgeCacheIndex].logoKey = 'tomatoes_certified';
+                                } else if (rtStatus.criticsCertified === false && !isCertifiedFreshOverride && criticsBadgeImg.dataset.source === 'tomatoes_certified') {
+                                    criticsBadgeImg.src = LOGO.tomatoes; criticsBadgeImg.dataset.source = 'tomatoes';
+                                    if (criticsBadgeCacheIndex >= 0) badgesToCache[criticsBadgeCacheIndex].logoKey = 'tomatoes';
+                                }
+                            }
+                            if (audienceBadgeImg && audienceScore >= 60 && rtStatus.audienceCertified !== null) {
+                                if (rtStatus.audienceCertified === true && audienceBadgeImg.dataset.source !== 'rotten_ver') {
+                                    audienceBadgeImg.src = LOGO.rotten_ver; audienceBadgeImg.dataset.source = 'rotten_ver';
+                                    if (audienceBadgeCacheIndex >= 0) badgesToCache[audienceBadgeCacheIndex].logoKey = 'rotten_ver';
+                                } else if (rtStatus.audienceCertified === false && !isVerifiedHotOverride && audienceBadgeImg.dataset.source === 'rotten_ver') {
+                                    audienceBadgeImg.src = LOGO.audience; audienceBadgeImg.dataset.source = 'audience';
+                                    if (audienceBadgeCacheIndex >= 0) badgesToCache[audienceBadgeCacheIndex].logoKey = 'audience';
+                                }
+                            }
+                            RatingsCache.set(cacheKey, { originalTitle: data.original_title || data.title || '', year: data.year || '', badges: badgesToCache });
+                        });
+                    } else {
+                        RatingsCache.set(cacheKey, { originalTitle: data.original_title || data.title || '', year: data.year || '', badges: badgesToCache });
+                    }
+                } else {
+                    RatingsCache.set(cacheKey, { originalTitle: data.original_title || data.title || '', year: data.year || '', badges: badgesToCache });
+                }
+                if (imdbId) {
+                    fetchAniListRating(imdbId, container);
+                    fetchAndRenderAllAwards(imdbId, container);
+                }
+                const title = container.dataset.originalTitle;
+                const year = parseInt(container.dataset.year, 10);
+                if (title && year) fetchKinopoiskRating(title, year, type, container);
+                const imdbIdForAllocine = container.dataset.imdbId || findImdbIdFromPage(container);
+                if (imdbIdForAllocine) fetchAllocineRatings(imdbIdForAllocine, type, container);
+            }
+        });
+    }
 
 	// ══════════════════════════════════════════════════════════════════
 	// AniList
@@ -1076,7 +1309,7 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	function getAnilistId(imdbId, cb) {
 		const cacheKey = `anilist_id_${imdbId}`;
 		const cached = RatingsCache.get(cacheKey);
-		if (cached !== null) { cb(cached.id); return; }
+		if (cached?.id) { cb(cached.id); return; }
 
 		const sparql = `SELECT ?anilist WHERE { ?item wdt:P345 "${imdbId}" . ?item wdt:P8729 ?anilist . } LIMIT 1`;
 		GM_xmlhttpRequest({
@@ -1095,7 +1328,11 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		});
 	}
 
-	function fetchAniListRating(imdbId, container) {
+	async function fetchAniListRating(imdbId, container) {
+        await refreshSettings();
+        if(!CONFIG.enableAniList)return;
+        const server=await Shared.endpoint('AniList',{ImdbId:imdbId});
+        if(server!==undefined){if(server?.score>0)appendRatingBadge(container,'anilist','AniList',`AniList: ${server.score}`,server.score);return;}
 		if (!CONFIG.enableAniList) return;
 		const cacheKey = `anilist_rating_${imdbId}`;
 		const cached = RatingsCache.get(cacheKey);
@@ -1165,11 +1402,11 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	// ══════════════════════════════════════════════════════════════════
 
 	function fetchKinopoiskRating(title, year, type, container) {
-		if (!CONFIG.enableKinopoisk || !KINOPOISK_API_KEY || KINOPOISK_API_KEY === 'DEIN_KEY_HIER') return;
+		if (!CONFIG.enableKinopoisk || (!pluginAvailable && (!KINOPOISK_API_KEY || KINOPOISK_API_KEY === 'DEIN_KEY_HIER'))) return;
 
 		const cacheKey = `kinopoisk_${type}_${title}_${year}`;
 		const cached = RatingsCache.get(cacheKey);
-		if (cached) {
+		if (cached?.rating != null) {
 		  if (cached.rating != null)
 			appendRatingBadge(container, 'kinopoisk', 'Kinopoisk', `Kinopoisk: ${cached.rating}`, cached.rating);
 		  return;
@@ -1177,7 +1414,8 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 
 		GM_xmlhttpRequest({
 		  method: 'GET',
-		  url: `https://kinopoiskapiunofficial.tech/api/v2.2/films?keyword=${encodeURIComponent(title)}&yearFrom=${year}&yearTo=${year}`,
+		  ratingType:type,
+          url: `https://kinopoiskapiunofficial.tech/api/v2.2/films?keyword=${encodeURIComponent(title)}&yearFrom=${year}&yearTo=${year}`,
 		  headers: { 'X-API-KEY': KINOPOISK_API_KEY, 'Content-Type': 'application/json' },
 		  onload(res) {
 			if (res.status !== 200) return;
@@ -1186,8 +1424,8 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 			const list = data.items || data.films || [];
 			if (!list.length) { RatingsCache.set(cacheKey, { rating: null }); return; }
 			const desired = type === 'show' ? 'TV_SERIES' : 'FILM';
-			const item = list.find(i => i.type === desired) || list[0];
-			if (item.ratingKinopoisk == null) { RatingsCache.set(cacheKey, { rating: null }); return; }
+			const item = list.find(i => i.type === desired && Number(i.year)===Number(year) && [i.nameOriginal,i.nameEn].some(n=>n?.toLowerCase()===title.toLowerCase()));
+			if (item?.ratingKinopoisk == null) { RatingsCache.set(cacheKey, { rating: null }); return; }
 
 			RatingsCache.set(cacheKey, { rating: item.ratingKinopoisk });
 			appendRatingBadge(container, 'kinopoisk', 'Kinopoisk', `Kinopoisk: ${item.ratingKinopoisk}`, item.ratingKinopoisk);
@@ -1199,99 +1437,64 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	// Allociné
 	// ══════════════════════════════════════════════════════════════════
 
-	function getAllocineId(imdbId, type) {
-		return new Promise((resolve) => {
-		  if (!imdbId) { resolve(null); return; }
-		  const cacheKey = `allocine_id_${type}_${imdbId}`;
-		  const cached = RatingsCache.get(cacheKey);
-		  if (cached !== null) { resolve(cached.id); return; }
+    async function getWikidataMapping(imdb) {
+        if(!/^tt[0-9]+$/.test(imdb||''))return null;
+        const key='wikidata_mapping_'+imdb,cached=RatingsCache.get(key);
+        if(cached)return cached;
+        return Shared.single('details:'+key,async()=>{
+            try{
+                const q=`SELECT ?item ?film ?show WHERE { ?item wdt:P345 "${imdb}" . OPTIONAL { ?item wdt:P1265 ?film . } OPTIONAL { ?item wdt:P1267 ?show . } } LIMIT 1`;
+                const data=JSON.parse(await Shared.text('https://query.wikidata.org/sparql?format=json&query='+encodeURIComponent(q),{headers:{Accept:'application/sparql-results+json'}}));
+                const row=data.results?.bindings?.[0];if(!row)return null;
+                const result={item:row.item?.value?.split('/').pop(),film:row.film?.value,show:row.show?.value};
+                if(!/^Q[0-9]+$/.test(result.item||''))return null;
+                RatingsCache.set(key,result);return result;
+            }catch{return null;}
+        });
+    }
+    async function getAllocineId(imdbId,type) {
+        const key=`allocine_id_${type}_${imdbId}`,cached=RatingsCache.get(key);
+        if(cached?.id)return cached.id;
+        const mapping=await getWikidataMapping(imdbId);
+        const id=type==='show'?mapping?.show:mapping?.film;
+        if(id)RatingsCache.set(key,{id});return id;
+    }
 
-		  const prop = type === 'show' ? 'P1267' : 'P1265';
-		  const sparql = `SELECT ?allocine WHERE { ?item wdt:P345 "${imdbId}" . ?item wdt:${prop} ?allocine . } LIMIT 1`;
-		  GM_xmlhttpRequest({
-			method: 'GET',
-			url: 'https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(sparql),
-			onload(res) {
-			  if (res.status !== 200) { resolve(null); return; }
-			  let json;
-			  try { json = JSON.parse(res.responseText); } catch { resolve(null); return; }
-			  const b = json.results.bindings;
-			  const id = b.length && b[0].allocine?.value ? b[0].allocine.value : null;
-			  RatingsCache.set(cacheKey, { id });
-			  resolve(id);
-			},
-			onerror: () => resolve(null)
-		  });
-		});
-	}
+    async function fetchAllocineRatings(imdbId, type, container) {
+        if(!CONFIG.enableCustomRatings||!CONFIG.enableAllocine||!imdbId||!container.isConnected)return;
+        const complete=()=>hasRating(container,'allocine_critics')&&hasRating(container,'allocine_audience');
+        const render=data=>{
+            if(!container.isConnected)return;
+            if(data?.pressScore)appendRatingBadge(container,'allocine_critics','Allociné Presse','Allociné Presse',data.pressScore);
+            if(data?.audienceScore)appendRatingBadge(container,'allocine_audience','Allociné Spectateurs','Allociné Spectateurs',data.audienceScore);
+        };
+        if(complete())return;
+        const key=`allocine_ratings_${type}_${imdbId}`;
+        const cached=RatingsCache.get(key);render(cached);
+        if(complete())return;
+        if(cached?.checkedAt&&Date.now()-cached.checkedAt<3600000)return;
+        const result=await Shared.single('detail:'+key,async()=>{
+            const server=await Shared.endpoint('Allocine',{ImdbId:imdbId,Type:type});
+            let result={...cached};
+            const press=Number(server?.Press??server?.press),audience=Number(server?.Audience??server?.audience);
+            if(press>0&&press<=5)result.pressScore=press.toFixed(1);
+            if(audience>0&&audience<=5)result.audienceScore=audience.toFixed(1);
+            // A usable plugin result needs no duplicate browser scrape.
+            if(press||audience){result.checkedAt=Date.now();RatingsCache.set(key,result);return result;}
+            if(!CORS_PROXY_URL?.trim())return result;
+            const id=await getAllocineId(imdbId,type);
+            if(!id||!/^\d+$/.test(id))return result;
+            const path=type==='show'?`series/ficheserie_gen_cserie=${id}`:`film/fichefilm_gen_cfilm=${id}`;
+            try{
+                const html=await Shared.text(CORS_PROXY_URL.trim().replace(/\/?$/, '/')+'https://www.allocine.fr/'+path+'.html');
+                result={...result,...parseAllocineRatings(html),checkedAt:Date.now()};
+                if(result.pressScore||result.audienceScore)RatingsCache.set(key,result);
+            }catch(error){console.warn('[Ratings] Allocine '+imdbId+': '+error.message);}
+            return result;
+        });
+        render(result);
+    }
 
-	function fetchAllocineRatings(imdbId, type, container) {
-		if (!CONFIG.enableAllocine || !imdbId || !CORS_PROXY_URL || CORS_PROXY_URL.trim() === '') return;
-
-		const cacheKey = `allocine_ratings_${type}_${imdbId}`;
-		const cached = RatingsCache.get(cacheKey);
-		if (cached) {
-		  if (cached.pressScore)
-			appendRatingBadge(container, 'allocine_critics', 'Allociné Presse', `Allociné Presse: ${cached.pressScore} / 5`, cached.pressScore);
-		  if (cached.audienceScore)
-			appendRatingBadge(container, 'allocine_audience', 'Allociné Spectateurs', `Allociné Spectateurs: ${cached.audienceScore} / 5`, cached.audienceScore);
-		  return;
-		}
-
-		getAllocineId(imdbId, type).then(allocineId => {
-		  if (!allocineId) { RatingsCache.set(cacheKey, { pressScore: null, audienceScore: null }); return; }
-
-		  const pathSegment = type === 'show' ? 'series' : 'film';
-		  const fileSegment = type === 'show' ? `ficheserie_gen_cserie=${allocineId}` : `fichefilm_gen_cfilm=${allocineId}`;
-
-		  GM_xmlhttpRequest({
-			method: 'GET',
-			url: `${CORS_PROXY_URL}https://www.allocine.fr/${pathSegment}/${fileSegment}.html`,
-			onload(res) {
-			  if (res.status !== 200) return;
-			  const html = res.responseText;
-			  const foundRatings = [];
-
-			  const ratingPattern = /class="stareval-note"[^>]*>\s*([\d][,.][\d])\s*<\/span>/g;
-			  let match;
-			  while ((match = ratingPattern.exec(html)) !== null) {
-				const val = parseFloat(match[1].replace(',', '.'));
-				if (val > 0 && val <= 5) foundRatings.push(val);
-			  }
-
-			  if (foundRatings.length === 0) {
-				const jsonLdMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/g);
-				if (jsonLdMatch) {
-				  for (const block of jsonLdMatch) {
-					try {
-					  const jsonStr = block.replace(/<script type="application\/ld\+json">/, '').replace(/<\/script>/, '');
-					  const jsonData = JSON.parse(jsonStr);
-					  if (jsonData.aggregateRating) {
-						const rv = parseFloat(jsonData.aggregateRating.ratingValue);
-						if (rv > 0 && rv <= 5) foundRatings.push(rv);
-					  }
-					} catch (e) { }
-				  }
-				}
-			  }
-
-			  if (foundRatings.length === 0) {
-				RatingsCache.set(cacheKey, { pressScore: null, audienceScore: null });
-				return;
-			  }
-
-			  const pressScore = foundRatings[0] ? foundRatings[0].toFixed(1) : null;
-			  const audienceScoreVal = foundRatings[1] ? foundRatings[1].toFixed(1) : null;
-
-			  RatingsCache.set(cacheKey, { pressScore, audienceScore: audienceScoreVal });
-
-			  if (pressScore)
-				appendRatingBadge(container, 'allocine_critics', 'Allociné Presse', `Allociné Presse: ${pressScore} / 5`, pressScore);
-			  if (audienceScoreVal)
-				appendRatingBadge(container, 'allocine_audience', 'Allociné Spectateurs', `Allociné Spectateurs: ${audienceScoreVal} / 5`, audienceScoreVal);
-			}
-		  });
-		});
-	}
+})();
 
 })();
