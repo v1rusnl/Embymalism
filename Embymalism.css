@@ -1909,7 +1909,7 @@ span.osd-endsat {
 }
 
 /* Audio Player Layouts */
-.skinHeader.focuscontainer-x.headroom.videoOsdHeader.semiTransparent.videoosd-header-safe {
+.skinHeader.headroom.videoOsdHeader.semiTransparent.videoosd-header-safe {
   max-width: 100px!important;
   max-height: 100px!important;
   bottom: unset!important;
@@ -2507,7 +2507,7 @@ img.recordingDialog-img {
     height: 80px!important;
   }
   
-  .skinHeader.focuscontainer-x.headroom.videoOsdHeader.semiTransparent:not(.videoOsdHeader-remotecontrol) {
+  .skinHeader.headroom.videoOsdHeader.semiTransparent:not(.videoOsdHeader-remotecontrol) {
     position: fixed;
     top: unset !important;
     width: -moz-available;
@@ -3507,4 +3507,11 @@ div.ee-region-container.ee-search-result-region {
 #HomeScreenCompanionConfigPage .btn-help-trigger,
 #HomeScreenCompanionConfigPage .btn-help-trigger:hover {
     border-color: #14aadf !important;
+}
+
+/* ===== Spotlight ===== */
+.verticalSection:has(.spotlightCard)
+.cardText-mediaInfo > .mediaInfoItem {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
 }
