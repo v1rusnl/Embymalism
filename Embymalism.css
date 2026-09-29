@@ -2340,8 +2340,7 @@ img.recordingDialog-img {
 @media (min-width: 40em) {
   .skinBody-withFullDrawer .page-windowScroll.withTabs, 
   .skinBody-withFullDrawer .withTabs .padded-top-page,
-  .page-windowScroll.withTabs, 
-  html:not(.layout-tv) .withTabs .padded-top-page {
+  .page-windowScroll.withTabs {
     padding-top: calc(4em + (var(--window-inset-top) * .7)) !important;
   }
 }
