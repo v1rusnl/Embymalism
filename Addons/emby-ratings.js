@@ -1,7 +1,7 @@
 /*!
  * Emby Ratings Integration
  * Adapted Jellyfin JS snippet -> THX to https://github.com/Druidblack/jellyfin_ratings
- * Shows IMDb, Rotten Tomatoes, Metacritic, Trakt, Letterboxd, AniList, RogerEbert, Kinopoisk, Allociné, Oscars + Emmy + Golden Globes + BAFTA + Razzies (Wins/Nominees), Palme d'Or + Berlinale + Venice Wins
+ * Shows IMDb, Rotten Tomatoes, Metacritic, Trakt, Letterboxd, AniList, RogerEbert, Kinopoisk, Allociné, Oscars + Emmy Wins
  * JSON first; missing awards and ratings load concurrently.
  *
  * Configuration is at the beginning of this file.
@@ -13,16 +13,6 @@
  * Paste your modified emby.ratings.js into /system/dashboard-ui/ 
  * Add <script src="emby-ratings.js" defer></script> in index.html before </body>
  *
- * Manually delete ratings cache in Browsers DevConsole (F12):
- * Object.keys(localStorage)
- * .filter(k => k.startsWith('emby_ratings_'))
- * .forEach(k => localStorage.removeItem(k));
- * console.log('Ratings-Cache gelöscht');
- *
- * Manually delete ratings cache in Browsers DevConsole (F12) for one TMDb-ID (e.g. 1399 = Game of Thrones):
- * Object.keys(localStorage)
- * .filter(k => k.startsWith('emby_ratings_') && k.includes('1399'))
- * .forEach(k => { console.log('Lösche:', k); localStorage.removeItem(k); });
  */
  
 (function(){
@@ -35,6 +25,7 @@
 		MDBLIST_API_KEY: '', // API Key from https://mdblist.com/
         TMDB_API_KEY: '', // API Key from https://www.themoviedb.org/
         KINOPOISK_API_KEY: '', // API key from https://kinopoiskapiunofficial.tech/
+		OMDB_API_KEY: '', // Own key for standalone use; plugin key stays on the server.
 		
 		// ══════════════════════════════════════════════════════════════════
         // INDIVIDUAL RATING PROVIDERS (true = enabled, false = disabled)
@@ -65,7 +56,7 @@
 /* Shared runtime, embedded into each distributable script. No extra script tag needed. */
 (function (w) {
  'use strict';
- if (w.EmbyRatingsRuntime?.version === '20260929.6') return;
+ if (w.EmbyRatingsRuntime?.version === '20260930.3') return;
  const pending = new Map(), memory = new Map(), queues = new Map(), next = new Map(), cooldown = new Map();
  let configValue = null, configUntil = 0, jsonValue = null, jsonUntil = 0;
  const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -165,27 +156,58 @@
    return jsonValue;
   });
  }
- async function awards(imdb) {
-  if (!/^tt\d+$/.test(imdb || '')) return null;
-  const server = await endpoint('Awards', {ImdbId:imdb}); if (server !== undefined) return server;
-  const query = async q => JSON.parse(await text('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(q), {headers:{Accept:'application/sparql-results+json'}})).results.bindings;
-  try {
-   const item = (await query(`SELECT ?item WHERE { ?item wdt:P345 "${imdb}" . } LIMIT 1`))[0]?.item?.value?.split('/').pop();
-   if (!/^Q\d+$/.test(item || '')) return null;
-   const rows = await query(`SELECT DISTINCT ?award ?awardLabel ?kind WHERE { { wd:${item} wdt:P166 ?award . BIND("wins" AS ?kind) } UNION { wd:${item} wdt:P1411 ?award . BIND("nominations" AS ?kind) } SERVICE wikibase:label { bd:serviceParam wikibase:language "en". } }`);
-   const result = {cannes:false,berlinale:false,venice:{gold:false,silver:false}};
-   for (const name of ['oscars','emmys','globes','bafta','razzies']) result[name] = {wins:0,nominations:0};
-   for (const row of rows) {
-    const label = (row.awardLabel?.value || '').toLowerCase(), kind = row.kind?.value;
-    if (!['wins','nominations'].includes(kind)) continue;
-    const name = /academy award|oscar/.test(label) ? 'oscars' : /emmy/.test(label) ? 'emmys' : /golden globe/.test(label) ? 'globes' : /bafta/.test(label) ? 'bafta' : /razzie|golden raspberry/.test(label) ? 'razzies' : null;
-    if (name) result[name][kind]++;
-    if (kind === 'wins') { const id = row.award?.value?.split('/').pop(); result.cannes ||= id==='Q179808'; result.berlinale ||= id==='Q154590'; result.venice.gold ||= id==='Q189038'; result.venice.silver ||= id==='Q830814'; }
-   }
-   return result;
-  } catch { return null; }
+ function parseAwards(value) {
+  if (typeof value !== 'string') return null;
+  const wins = name => { const match=value.match(new RegExp('\\bWon\\s+([\\d,]+)\\s+'+name+'\\b','i'));return match?Number(match[1].replace(/,/g,'')):null; };
+  return {source:'omdb',schema:1,text:value,oscars:{wins:wins('Oscars?')},emmys:{wins:wins('(?:(?:Primetime|Daytime|International)\\s+)?Emm(?:y|ys)')}};
  }
- w.EmbyRatingsRuntime = {version:'20260929.6', config, field, endpoint, text, serverRatings, awards, single, read, write, setApi:value=>{resolvedApi=value;}};
+ function validAwards(value) { return value?.source==='omdb' && value.schema===1 && typeof value.text==='string'; }
+ async function awards(imdb, apiKey='') {
+  if (!/^tt\d+$/.test(imdb||'')) return null;
+  const key='omdb-awards-v1:'+imdb, cached=read(key);
+  if(validAwards(cached?.value)&&cached.until>Date.now())return cached.value;
+  return single(key,async()=>{
+   try {
+    const server=await endpoint('Awards',{ImdbId:imdb});
+    if(validAwards(server)){write(key,server,604800000);return server;}
+    if(!apiKey.trim())return validAwards(cached?.value)?cached.value:null;
+    const bucket='omdb:'+hash(apiKey.trim());
+    if(read(bucket)?.until>Date.now())return validAwards(cached?.value)?cached.value:null;
+    const response=JSON.parse(await text('https://www.omdbapi.com/?i='+encodeURIComponent(imdb)+'&apikey='+encodeURIComponent(apiKey.trim()),{},0));
+    if(response.Response!=='True'){
+     if(/limit|key/i.test(response.Error||''))write(bucket,true,86400000);
+     return validAwards(cached?.value)?cached.value:null;
+    }
+    const result=parseAwards(response.Awards);
+    if(result)write(key,result,604800000);
+    return result;
+   }catch{return validAwards(cached?.value)?cached.value:null;}
+  });
+ }
+ function renderAwards(row, data) {
+  row.replaceChildren();
+  if(!validAwards(data))return;
+  for(const [name,label,logo] of [['oscars','Oscars','Oscars_Win.png'],['emmys','Emmys','Emmy_Win.png']]){
+   const wins=Number(data[name]?.wins);
+   if(!Number.isSafeInteger(wins)||wins<=0)continue;
+   const group=document.createElement('span');group.className='omdb-award-section '+name+'-section';
+   group.title=label+': '+wins+' wins. '+data.text;
+   group.setAttribute('aria-label',group.title);
+   group.style.cssText='display:inline-flex;align-items:center;gap:1px;margin-right:12px;flex-wrap:wrap;pointer-events:auto';
+   const heading=document.createElement('img');
+   heading.src='https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/'+(name==='oscars'?'academyaw.png':'emmy.png');
+   heading.className='omdb-award-heading';heading.alt=label;heading.title=group.title;
+   heading.style.cssText='height:1.5em;width:auto;max-width:none;object-fit:contain;margin-right:8px';
+   group.appendChild(heading);
+   for(let i=0;i<wins;i++){
+    const img=document.createElement('img');img.src='https://cdn.jsdelivr.net/gh/v1rusnl/EmbySpotlight@main/logo/'+logo;
+    img.className=name==='oscars'?'oscars_win':'emmy_win';img.alt=label+' win';img.title=group.title;
+    img.style.cssText='height:1.5em;width:auto;max-width:none;object-fit:contain';group.appendChild(img);
+   }
+   row.appendChild(group);
+  }
+ }
+ w.EmbyRatingsRuntime = {version:'20260930.3', config, field, endpoint, text, serverRatings, awards, parseAwards, validAwards, renderAwards, single, read, write, setApi:value=>{resolvedApi=value;}};
 })(window);
 
 if (typeof GM_xmlhttpRequest === 'undefined') {
@@ -285,17 +307,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
         }
         return result;
     }
-
-
-    // ══════════════════════════════════════════════════════════════════
-    // CONFIGURATION
-    // ══════════════════════════════════════════════════════════════════
-    
-
-
-    // ══════════════════════════════════════════════════════════════════
-    // END CONFIGURATION
-    // ══════════════════════════════════════════════════════════════════
 
     const MDBLIST_API_KEY = CONFIG.MDBLIST_API_KEY;
     const TMDB_API_KEY = CONFIG.TMDB_API_KEY;
@@ -672,49 +683,6 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 		});
 	}
 	
-	  // Server Awards rendern – mit Logo-Key Mapping
-	  function renderServerAwards(awards, container) {
-		if (!Array.isArray(awards) || awards.length === 0) return;
-		const awardsRow = getOrCreateAwardsRow(container);
-		if (!awardsRow) return;
-
-		// Mapping: Server-logoKey → LOGO-Key in emby-ratings.js
-		const AWARD_LOGO_REMAP = {
-		  'oscar_gold':        'academy',
-		  'oscar_nom':         'oscars_nom',
-		  'emmy_gold':         'emmy',
-		  'emmy_nom':          'emmy_nom',
-		  'golden_globe_gold': 'globes',
-		  'golden_globe_nom':  'globes_nom',
-		  'bafta_gold':        'bafta',
-		  'bafta_nom':         'bafta_nom',
-		  'razzie_gold':       'razzies',
-		  'razzie':            'razzies',
-		  'cannes':            'cannes',
-		  'berlinale':         'berlinale',
-		  'venezia_gold':      'venezia_gold',
-		  'venezia_silver':    'venezia_silver'
-		};
-
-		awards.forEach(award => {
-		  // Remapping anwenden, Fallback auf Original-Key
-		  const mappedKey = AWARD_LOGO_REMAP[award.logoKey] || award.logoKey;
-		  const logoUrl = LOGO[mappedKey];
-		  if (!logoUrl) return;
-
-		  const img = document.createElement('img');
-		  img.src = logoUrl;
-		  img.alt = award.alt || '';
-		  img.title = award.title || '';
-		  img.style.cssText = 'height:1.5em; margin-right:8px; vertical-align:middle;';
-		  awardsRow.appendChild(img);
-		});
-	  }
-
-	// ══════════════════════════════════════════════════════════════════
-	// Rotten Tomatoes: Get RT Slug from Wikidata
-	// ══════════════════════════════════════════════════════════════════
-
 	function getRTSlug(imdbId) {
 		return new Promise((resolve) => {
 			if (!imdbId) { resolve(null); return; }
@@ -928,190 +896,22 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	// COMBINED AWARDS ROW
 	// ══════════════════════════════════════════════════════════════════
 
-	function getOrCreateAwardsRow(container) {
-        if(!CONFIG.enableAwards||!container.isConnected)return null;
-		const ratingRow = container.closest('.mdblist-rating-row');
-		if (!ratingRow) return null;
-		let awardsRow = ratingRow.parentNode.querySelector('.awards-combined-row');
-		if (awardsRow) return awardsRow;
-
-		awardsRow = document.createElement('div');
-		awardsRow.className = 'awards-combined-row';
-		awardsRow.style.cssText = 'display:flex; align-items:center; flex-wrap:wrap; gap:0px; margin-bottom:13px;';
-
-		['oscar-section', 'globes-section', 'emmy-section', 'bafta-section', 'razzies-section', 'berlinale-section', 'cannes-section', 'venezia-section'].forEach(cls => {
-			const section = document.createElement('div');
-			section.className = cls;
-			section.style.cssText = 'display:none; align-items:center; margin-right:15px;';
-			awardsRow.appendChild(section);
-		});
-
-		ratingRow.parentNode.insertBefore(awardsRow, ratingRow);
-		return awardsRow;
-	}
-
-	function renderAwardStatues(section, logoKey, winIconKey, nomIconKey, wins, nominations, awardName) {
-		section.innerHTML = '';
-		const nomOnly = Math.max(0, nominations - wins);
-
-		let titleText = `${awardName}:`;
-		if (wins > 0) titleText += ` ${wins} Won`;
-		if (wins > 0 && nomOnly > 0) titleText += ',';
-		if (nomOnly > 0) titleText += ` ${nomOnly} Nominated`;
-
-		const logo = document.createElement('img');
-		logo.src = LOGO[logoKey]; logo.alt = awardName; logo.title = titleText;
-		logo.style.cssText = 'height:1.5em; vertical-align:middle; margin-right:8px;';
-		section.appendChild(logo);
-
-		for (let i = 0; i < wins; i++) {
-			const statue = document.createElement('img');
-			statue.src = LOGO[winIconKey]; statue.alt = `${awardName} Win`; statue.title = `${awardName} Win`;
-			statue.style.cssText = 'height:1.5em; vertical-align:middle; margin-right:1px;';
-			section.appendChild(statue);
-		}
-		if (wins > 0 && nomOnly > 0) {
-			const gap = document.createElement('span');
-			gap.style.cssText = 'display:inline-block; width:5px;';
-			section.appendChild(gap);
-		}
-		for (let i = 0; i < nomOnly; i++) {
-			const statue = document.createElement('img');
-			statue.src = LOGO[nomIconKey]; statue.alt = `${awardName} Nomination`; statue.title = `${awardName} Nomination`;
-			statue.style.cssText = 'height:1.5em; vertical-align:middle; margin-right:1px;';
-			section.appendChild(statue);
-		}
-		section.style.display = 'flex';
-	}
-
-	function renderFestivalBadge(section, logoKey, alt, title) {
-		section.innerHTML = '';
-		const logo = document.createElement('img');
-		logo.src = LOGO[logoKey]; logo.alt = alt; logo.title = title;
-		logo.style.cssText = 'height:1.5em; vertical-align:middle;';
-		section.appendChild(logo);
-		section.style.display = 'flex';
-	}
-
-	// ══════════════════════════════════════════════════════════════════
-	// AWARDS — shared Wikidata mapping, then one query for all awards
-	// Mapping is reused by Allocine; no dependency on the Spotlight awards stub.
-	// ══════════════════════════════════════════════════════════════════
-
- async function directDetailAwards(imdb) {
-  if (!/^tt\d+$/.test(imdb || '')) return null;
-  const query = async q => JSON.parse(await Shared.text('https://query.wikidata.org/sparql?format=json&query=' + encodeURIComponent(q), {headers:{Accept:'application/sparql-results+json'}})).results.bindings;
-  try {
-   const item = (await getWikidataMapping(imdb))?.item;
-   if (!/^Q\d+$/.test(item || '')) return null;
-   const rows = await query(`SELECT DISTINCT ?award ?awardLabel ?kind WHERE { { wd:${item} wdt:P166 ?award . BIND("wins" AS ?kind) } UNION { wd:${item} wdt:P1411 ?award . BIND("nominations" AS ?kind) } SERVICE wikibase:label { bd:serviceParam wikibase:language "en". } }`);
-   const result = {cannes:false,berlinale:false,venice:{gold:false,silver:false}};
-   for (const name of ['oscars','emmys','globes','bafta','razzies']) result[name] = {wins:0,nominations:0};
-   for (const row of rows) {
-    const label = (row.awardLabel?.value || '').toLowerCase(), kind = row.kind?.value;
-    if (!['wins','nominations'].includes(kind)) continue;
-    const name = /academy award|oscar/.test(label) ? 'oscars' : /emmy/.test(label) ? 'emmys' : /golden globe/.test(label) ? 'globes' : /bafta/.test(label) ? 'bafta' : /razzie|golden raspberry/.test(label) ? 'razzies' : null;
-    if (name) result[name][kind]++;
-    if (kind === 'wins') { const id = row.award?.value?.split('/').pop(); result.cannes ||= id==='Q179808'; result.berlinale ||= id==='Q154590'; result.venice.gold ||= id==='Q189038'; result.venice.silver ||= id==='Q830814'; }
-   }
-   return result;
-  } catch { return null; }
- }
-
-    async function fetchAllAwardsCombined(imdbId) {
-        if(!CONFIG.enableAwards)return null;
-        const key='detail_awards_'+imdbId;
-        const cached=RatingsCache.get(key);if(cached)return cached;
-        return Shared.single(key,async()=>{
-            const result=await directDetailAwards(imdbId);
-            if(result)RatingsCache.set(key,result);
-            return result;
-        });
-    }
     const awardsStarted=new WeakMap();
-
-	function fetchAndRenderAllAwards(imdbId, container) {
+    function fetchAndRenderAllAwards(imdbId,container){
         if(!CONFIG.enableAwards||!container.isConnected)return;
-        const entry=SERVER_RATINGS?.[`${container.dataset.type}_${container.dataset.tmdbId}`];
-        const imported=entry?.awards||RatingsCache.get(`mdblist_${container.dataset.type}_${container.dataset.tmdbId}`)?.awards;
-        if(!imdbId&&!imported)return;
+        const imported=SERVER_RATINGS?.[`${container.dataset.type}_${container.dataset.tmdbId}`]?.awards;
+        if(!imdbId&&!Shared.validAwards(imported))return;
         if(awardsStarted.get(container)===(imdbId||'import'))return;
         awardsStarted.set(container,imdbId||'import');
-        const task=imported&&typeof imported==='object'&&!Array.isArray(imported)?Promise.resolve(imported):fetchAllAwardsCombined(imdbId);
-        task.then(awards => {
-            if(!container.isConnected)return;
-            if(awards){awards={oscars:{},emmys:{},globes:{},bafta:{},razzies:{},venice:{},...awards};}
-
-			if (!awards) return;
-
-			const awardsRow = getOrCreateAwardsRow(container);
-			if (!awardsRow) return;
-
-			// Oscars
-			if (awards.oscars.wins > 0 || awards.oscars.nominations > 0) {
-				const section = awardsRow.querySelector('.oscar-section');
-				if (section && section.childNodes.length === 0)
-					renderAwardStatues(section, 'academy', 'oscars_win', 'oscars_nom', awards.oscars.wins, awards.oscars.nominations, 'Academy Awards');
-			}
-
-			// Golden Globes
-			if (awards.globes.wins > 0 || awards.globes.nominations > 0) {
-				const section = awardsRow.querySelector('.globes-section');
-				if (section && section.childNodes.length === 0)
-					renderAwardStatues(section, 'globes', 'globes_win', 'globes_nom', awards.globes.wins, awards.globes.nominations, 'Golden Globe Awards');
-			}
-
-			// Emmys
-			if (awards.emmys.wins > 0 || awards.emmys.nominations > 0) {
-				const section = awardsRow.querySelector('.emmy-section');
-				if (section && section.childNodes.length === 0)
-					renderAwardStatues(section, 'emmy', 'emmy_win', 'emmy_nom', awards.emmys.wins, awards.emmys.nominations, 'Emmy Awards');
-			}
-
-			// BAFTA
-			if (awards.bafta.wins > 0 || awards.bafta.nominations > 0) {
-				const section = awardsRow.querySelector('.bafta-section');
-				if (section && section.childNodes.length === 0)
-					renderAwardStatues(section, 'bafta', 'bafta_win', 'bafta_nom', awards.bafta.wins, awards.bafta.nominations, 'BAFTA Awards');
-			}
-
-			// Razzies
-			if (awards.razzies.wins > 0 || awards.razzies.nominations > 0) {
-				const section = awardsRow.querySelector('.razzies-section');
-				if (section && section.childNodes.length === 0)
-					renderAwardStatues(section, 'razzies', 'razzies_win', 'razzies_nom', awards.razzies.wins, awards.razzies.nominations, 'Razzie Awards');
-			}
-
-			// Berlinale
-			if (awards.berlinale) {
-				const section = awardsRow.querySelector('.berlinale-section');
-				if (section && section.childNodes.length === 0)
-					renderFestivalBadge(section, 'berlinale', 'Goldener Bär (Berlinale)', 'Goldener Bär – Berlinale');
-			}
-
-			// Cannes
-			if (awards.cannes) {
-				const section = awardsRow.querySelector('.cannes-section');
-				if (section && section.childNodes.length === 0)
-					renderFestivalBadge(section, 'cannes', "Palme d'Or (Cannes)", "Palme d'Or – Festival de Cannes");
-			}
-
-			// Venice
-			if (awards.venice.gold || awards.venice.silver) {
-				const section = awardsRow.querySelector('.venezia-section');
-				if (section && section.childNodes.length === 0) {
-					const isGold = awards.venice.gold;
-					renderFestivalBadge(section,
-						isGold ? 'venezia_gold' : 'venezia_silver',
-						isGold ? "Leone d'Oro (Venice)" : 'Gran Premio della Giuria (Venice)',
-						isGold ? "Leone d'Oro – Venice Film Festival" : 'Gran Premio della Giuria – Venice Film Festival'
-					);
-				}
-			}
-		}).catch(err => {
-			console.warn('[Emby Ratings] Combined awards fetch error:', err);
-		});
-	}
+        const task=Shared.validAwards(imported)?Promise.resolve(imported):Shared.awards(imdbId,CONFIG.OMDB_API_KEY);
+        task.then(data=>{
+            if(!container.isConnected||!Shared.validAwards(data))return;
+            const ratingRow=container.closest('.mdblist-rating-row');if(!ratingRow)return;
+            let row=ratingRow.parentNode.querySelector('.awards-combined-row');
+            if(!row){row=document.createElement('div');row.className='awards-combined-row';row.style.cssText='display:flex;align-items:center;flex-wrap:wrap;margin-bottom:13px';ratingRow.before(row);}
+            Shared.renderAwards(row,data);if(!row.childNodes.length)row.remove();
+        }).catch(()=>{});
+    }
 
     // ══════════════════════════════════════════════════════════════════
     // MDBList Main Fetch
