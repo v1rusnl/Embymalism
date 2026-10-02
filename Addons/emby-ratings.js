@@ -418,34 +418,41 @@ if (typeof GM_xmlhttpRequest === 'undefined') {
 	  
 	let VERIFIED_HOT_OVERRIDES = [
         // Movies with a score <90, but RT verified hot nonetheless
-        '812583', // Wake Up Dead Man A Knives Out Mystery
-        '1272837', // 28 Years Later: The Bone Temple
-        '1054867', // One Battle After Another
-        '1088166', // Relay
-        '1007734', // Nobody 2
-        '1078605', // Weapons
-        '1022787', // Elio
-        '575265', // Mission: Impossible - The Final Reckoning
-        '574475', // Final Destination Bloodlines
-        '1197306', // A Working Man
-        '784524', // Magazine Dreams
-        '1084199', // Companion
-        '1280672', // One of Them Days
-        '1082195', // The Order
-        '845781', // Red One
-        '1064213', // Anora
-        '1034541', // Terrifier 3
-        '1112426', // Stree 2
-        '1079091', // It Ends with Us
-        '956842', // Fly Me to the Moon
-        '823464', // Godzilla x Kong: The New Empire
-        '768362', // Missing
-        '614939', // Bros
-        '335787', // Uncharted
-        '576845', // Last Night in Soho
-        '568124', // Encanto
-        '340558', // Fantasmas
-        '1259102', // Eternity
+		'1272837', // 28 Years Later: The Bone Temple
+		'1054867', // One Battle After Another
+		'1088166', // Relay
+		'1007734', // Nobody 2
+		'1078605', // Weapons
+		'1022787', // Elio
+		'575265', // Mission: Impossible - The Final Reckoning
+		'574475', // Final Destination Bloodlines
+		'1197306', // A Working Man
+		'784524', // Magazine Dreams
+		'1084199', // Companion
+		'1280672', // One of Them Days
+		'1082195', // The Order
+		'845781', // Red One
+		'1064213', // Anora
+		'1034541', // Terrifier 3
+		'1112426', // Stree 2
+		'1079091', // It Ends with Us
+		'956842', // Fly Me to the Moon
+		'823464', // Godzilla x Kong: The New Empire
+		'768362', // Missing
+		'614939', // Bros
+		'335787', // Uncharted
+		'576845', // Last Night in Soho
+		'568124', // Encanto
+		'340558', // Fantasmas
+		'950028', // The Invite
+		'1266127', // Ready or Not 2: Here I Come
+		'1108427', // Moana (2026)
+		'1397485', // Girls Like Girls
+		'1226863', // The Super Mario Galaxy Movie
+		'1367642', // Reminders of Him
+		'931285', // Mortal Kombat II
+		'1116201', // Iron Lung
+		'1439713', // Mana ShankaraVaraprasad Garu
 	];
 
 	const LOGO = {
