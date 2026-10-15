@@ -1,4 +1,4 @@
-/* ===== Embymalism_4.10.1.0 20260929 ===== */
+/* ===== Embymalism_4.10.1.0 20261015 ===== */
 
 @import url('https://fonts.googleapis.com/css2?family=Sofia+Sans:ital,wght@0,1..1000;1,1..1000&display=swap');
 
@@ -3514,4 +3514,39 @@ div.ee-region-container.ee-search-result-region {
 .cardText-mediaInfo > .mediaInfoItem {
     margin-top: 0 !important;
     margin-bottom: 0 !important;
+}
+
+/* ===== Fix Staffelansicht: Favoriten- und Abgespielt-Buttons ===== */
+/* Favorit oder abgespielt: Blau */
+button.listItemButton.itemAction.md-icon.paper-icon-button-light.listViewFavoriteButton[data-isfavorite="true"],
+button.listItemButton.itemAction.md-icon.paper-icon-button-light.listViewPlayedButton[data-played="true"] {
+    color: #14aadf !important;
+}
+
+/* Kein Favorit oder nicht abgespielt: Weiß */
+button.listItemButton.itemAction.md-icon.paper-icon-button-light.listViewFavoriteButton[data-isfavorite="false"],
+button.listItemButton.itemAction.md-icon.paper-icon-button-light.listViewPlayedButton[data-played="false"] {
+    color: #ffffff !important;
+}
+
+/* Transparenter Hintergrund, auch bei Hover und Fokus */
+button.listItemButton.itemAction.md-icon.paper-icon-button-light.listViewFavoriteButton,
+button.listItemButton.itemAction.md-icon.paper-icon-button-light.listViewPlayedButton {
+    background: transparent !important;
+}
+
+/* Aktiv: blaues Icon auf weißem Kreis */
+button.listItemButton.itemAction.md-icon.paper-icon-button-light.listViewFavoriteButton[data-isfavorite="true"]:is(:hover, :active),
+button.listItemButton.itemAction.md-icon.paper-icon-button-light.listViewPlayedButton[data-played="true"]:is(:hover, :active) {
+    color: #14aadf !important;
+    background: #ffffff !important;
+    border-radius: 50% !important;
+}
+
+/* Inaktiv: weißes Icon auf blauem Kreis */
+button.listItemButton.itemAction.md-icon.paper-icon-button-light.listViewFavoriteButton[data-isfavorite="false"]:is(:hover, :active),
+button.listItemButton.itemAction.md-icon.paper-icon-button-light.listViewPlayedButton[data-played="false"]:is(:hover, :active) {
+    color: #ffffff !important;
+    background: #14aadf !important;
+    border-radius: 50% !important;
 }
